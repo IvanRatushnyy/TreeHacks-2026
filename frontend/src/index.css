@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+/* ===== DESIGN TOKENS ===== */
+:root {
+  /* Core Palette */
+  --regal-navy: #134074;
+  --oxford-navy: #13315c;
+  --prussian-blue: #0b2545;
+  --powder-blue: #8da9c4;
+  --mint-cream: #eef4ed;
+
+  /* Semantic Mappings */
+  --bg-app: #ffffff;
+  --bg-card: #ffffff;
+  --bg-panel-right: #fcfcfc;
+  --bg-input: #fafcff;
+  --text-primary: var(--prussian-blue);
+  --text-secondary: var(--oxford-navy);
+  --accent-interactive: var(--regal-navy);
+
+  /* Borders */
+  --border-light: rgba(19, 63, 114, 0.1);
+  --border-medium: rgba(19, 63, 114, 0.2);
+  --border-subtle: #f3f4f6;
+  --border-divider: #e5e7eb;
+
+  /* Text Shades */
+  --text-muted: #9ca3af;
+  --text-dim: #6b7280;
+  --text-body: #4b5563;
+  --text-body-dark: #1f2937;
+  --text-heading: #111827;
+  --text-label: rgba(19, 63, 114, 0.6);
+  --text-placeholder: rgba(19, 63, 114, 0.4);
+
+  /* The "Hexi" Gradient Definition */
+  --hexi-gradient-idle: linear-gradient(135deg, var(--powder-blue), var(--mint-cream));
+  --hexi-gradient-active: linear-gradient(135deg, var(--regal-navy), var(--oxford-navy), var(--prussian-blue));
+}
+
+/* ===== BASE STYLES ===== */
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 400;
+    line-height: 1.6;
+    color: var(--text-primary);
+    background: var(--bg-app);
+    min-height: 100vh;
+    overflow: hidden;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+}
+
+/* ===== UTILITY CLASSES ===== */
+@utility font-display {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+@utility font-body {
+  font-family: 'Manrope', sans-serif;
+}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-medium);
+  border-radius: 2px;
+}
