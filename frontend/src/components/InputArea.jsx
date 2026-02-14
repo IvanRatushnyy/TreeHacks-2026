@@ -1,4 +1,34 @@
-export default function InputArea() {
+import { useState, useEffect, useRef } from 'react';
+
+/**
+ * InputArea — editable textarea for transcription / clinical notes.
+ *
+ * Props:
+ *  - transcript  (string) : live transcription text (empty for now)
+ *  - isListening (bool)   : whether voice input is active
+ */
+export default function InputArea({ transcript = '', isListening = false }) {
+  const [value, setValue] = useState('');
+  const textareaRef = useRef(null);
+
+  // When transcript text arrives from parent, append it
+  useEffect(() => {
+    if (transcript) {
+      setValue(transcript);
+    }
+  }, [transcript]);
+
+  // Auto-scroll textarea to bottom when value changes
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.scrollTop = textareaRef.current.scrollHeight;
+    }
+  }, [value]);
+
+  const placeholder = isListening
+    ? 'Listening...'
+    : 'Override transcription or append clinical notes...';
+
   return (
     <div
       className="w-full flex flex-col bg-white"
@@ -10,21 +40,30 @@ export default function InputArea() {
     >
       {/* Textarea wrapper with send button */}
       <div className="relative w-full" style={{ height: '80px' }}>
-        <div
+        <textarea
+          ref={textareaRef}
           className="w-full h-full rounded-lg font-body"
           style={{
-            backgroundColor: 'var(--bg-input)',
+            backgroundColor: '#ffffff',
             border: '1px solid var(--border-medium)',
             borderRadius: '8px',
-            boxShadow: 'inset 0px 2px 4px 1px rgba(0, 0, 0, 0.05)',
             padding: '17px 49px 17px 17px',
-            fontSize: '14px',
-            lineHeight: '20px',
-            color: 'var(--text-placeholder)',
+            fontSize: '16px',
+            lineHeight: '22.75px',
+            color: isListening && !value
+              ? 'var(--text-placeholder)'
+              : 'var(--text-primary)',
+            resize: 'none',
+            outline: 'none',
+            fontFamily: 'inherit',
+            ...(isListening && !value
+              ? { animation: 'listeningBlink 1.5s ease-in-out infinite' }
+              : {}),
           }}
-        >
-          Override transcription or append clinical notes...
-        </div>
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
 
         {/* Send button */}
         <button
@@ -39,15 +78,17 @@ export default function InputArea() {
             boxShadow: '0px 1px 2px 0px rgba(0, 0, 0, 0.05)',
             border: 'none',
             cursor: 'pointer',
-            padding: '8px',
+            padding: '0',
           }}
+          type="button"
+          aria-label="Send"
         >
-          <svg width="12.25" height="10.5" viewBox="0 0 12.25 10.5" fill="none">
-            <path
-              d="M0 10.5V6.42578L8.75 5.25L0 4.07422V0L12.25 5.25L0 10.5Z"
-              fill="white"
-            />
-          </svg>
+          <span
+            className="material-symbols-outlined"
+            style={{ fontSize: '18px', color: 'white' }}
+          >
+            send
+          </span>
         </button>
       </div>
 

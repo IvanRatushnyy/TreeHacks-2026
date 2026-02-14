@@ -34,40 +34,29 @@ const chatEntries = [
 
 function ActiveEntry() {
   return (
-    <div
-      className="bg-white rounded-sm"
+    <p
+      className="font-body leading-relaxed"
       style={{
-        borderLeft: '2px solid var(--regal-navy)',
-        boxShadow: '0px 1px 2px 0px rgba(0, 0, 0, 0.05)',
-        padding: '15px 18px',
+        color: '#000000',
+        fontSize: 'clamp(18px, 2.2vw, 30px)',
+        lineHeight: '1.35',
       }}
     >
-      <p
-        className="font-body leading-relaxed"
-        style={{ color: 'var(--text-heading)', fontSize: '14px', lineHeight: '22.75px' }}
-      >
-        {'Current medication confirmed: '}
-        <span
-          className="inline-block px-1"
-          style={{
-            backgroundColor: 'rgba(19, 64, 116, 0.1)',
-            color: 'var(--regal-navy)',
-          }}
-        >
-          Lisinopril 10mg
-        </span>
-        {' daily. Patient adheres'}
-        <br />
-        {'to schedule.'}
-      </p>
-    </div>
+      {'Current medication confirmed: '}
+      <span style={{ color: '#000000' }}>
+        Lisinopril 10mg
+      </span>
+      {' daily. Patient adheres'}
+      <br />
+      {'to schedule.'}
+    </p>
   );
 }
 
 export default function TranscriptionStream() {
   return (
     <div className="flex flex-col w-full" style={{ gap: '31px' }}>
-      {/* Header row */}
+      {/* Header row: "Hexi" title left; Export label + icons right */}
       <div
         className="flex items-center justify-between"
         style={{
@@ -75,25 +64,66 @@ export default function TranscriptionStream() {
           borderBottom: '1px solid var(--border-divider)',
         }}
       >
-        <span
-          className="font-body font-bold uppercase"
-          style={{
-            color: 'var(--text-muted)',
-            fontSize: '12px',
-            letterSpacing: '1.8px',
-          }}
-        >
-          Live Chat
-        </span>
-        <span
-          className="font-display"
-          style={{
-            color: 'var(--text-muted)',
-            fontSize: '12px',
-          }}
-        >
-          REC: 00:04:12
-        </span>
+        {/* Title with logo — styled like footer vitals numbers */}
+        <div className="flex items-center" style={{ gap: '10px' }}>
+          <svg width="24" height="23" viewBox="0 0 20 19" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block', flexShrink: 0 }}>
+            <path d="M9.14941 0C9.09893 0.0237414 9.04883 0.0489571 9 0.0771484L2.33984 3.92285C1.72117 4.28005 1.33999 4.93993 1.33984 5.6543V13.3457C1.33999 14.0601 1.72117 14.7199 2.33984 15.0771L9 18.9229C9.04883 18.951 9.09893 18.9763 9.14941 19H0V0H9.14941ZM20 19H10.8506C10.9011 18.9763 10.9512 18.951 11 18.9229L17.6602 15.0771C18.2788 14.7199 18.66 14.0601 18.6602 13.3457V5.6543C18.66 4.93993 18.2788 4.28005 17.6602 3.92285L11 0.0771484C10.9512 0.0489571 10.9011 0.0237414 10.8506 0H20V19Z" fill="#133F72" />
+          </svg>
+          <span
+            className="font-body font-bold truncate"
+            style={{
+              color: 'rgb(19, 63, 114)',
+              fontSize: 'clamp(18px, 2.2vw, 30px)',
+              lineHeight: '36px',
+              letterSpacing: '-0.75px',
+            }}
+          >
+            Hexi
+          </span>
+        </div>
+
+        {/* Export — label above, icons below, width aligned with icon span */}
+        <div className="flex flex-col items-center shrink-0" style={{ gap: '4px' }}>
+          <span
+            className="font-display font-bold uppercase block"
+            style={{
+              color: 'var(--text-label)',
+              fontSize: '12px',
+              lineHeight: '16px',
+              letterSpacing: '0.6px',
+              width: '64px', // 22 + 10 + 22 + 10 = spans both icons + gap
+              textAlign: 'center',
+            }}
+          >
+            Export
+          </span>
+          <div className="flex items-center" style={{ gap: '10px' }}>
+            <span
+              className="material-symbols-outlined cursor-pointer"
+              style={{
+                fontSize: '22px',
+                color: 'var(--text-label)',
+                lineHeight: 1,
+              }}
+              title="Export as PDF"
+              aria-label="Export as PDF"
+            >
+              picture_as_pdf
+            </span>
+            <span
+              className="material-symbols-outlined cursor-pointer"
+              style={{
+                fontSize: '22px',
+                color: 'var(--text-label)',
+                lineHeight: 1,
+              }}
+              title="Attach email"
+              aria-label="Attach email"
+            >
+              attach_email
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Chat entries */}
@@ -101,26 +131,21 @@ export default function TranscriptionStream() {
         {chatEntries.map((entry, idx) => (
           <div
             key={idx}
-            className="flex items-start"
+            className="flex flex-col"
             style={{
-              gap: '16px',
+              gap: '6px',
               opacity: entry.active ? 1 : entry.isPlaceholder ? 1 : entry.opacity,
             }}
           >
-            {/* Indicator dot + timestamp column */}
-            <div
-              className="flex items-start shrink-0 relative"
-              style={{ width: '56px', paddingTop: entry.active ? '1px' : '0' }}
-            >
+            {/* Timestamp above — with indicator dot if active */}
+            <div className="flex items-center" style={{ gap: '8px' }}>
               {entry.active && (
                 <span
-                  className="absolute rounded-full shrink-0"
+                  className="rounded-full shrink-0"
                   style={{
                     width: '6px',
                     height: '6px',
                     backgroundColor: 'var(--regal-navy)',
-                    left: '-5px',
-                    top: '9px',
                   }}
                 />
               )}
@@ -129,8 +154,7 @@ export default function TranscriptionStream() {
                 style={{
                   fontSize: '12px',
                   lineHeight: '16px',
-                  paddingTop: '4px',
-                  color: entry.active ? 'var(--regal-navy)' : entry.timeColor || 'var(--text-muted)',
+                  color: entry.isPlaceholder ? 'var(--text-muted)' : '#000000',
                   fontFamily: entry.isPlaceholder ? "'Liberation Mono', monospace" : undefined,
                 }}
               >
@@ -138,21 +162,17 @@ export default function TranscriptionStream() {
               </span>
             </div>
 
-            {/* Content */}
-            <div className="flex-1 min-w-0">
+            {/* Content below timestamp */}
+            <div>
               {entry.active ? (
                 <ActiveEntry />
               ) : (
                 <p
                   className="font-body"
                   style={{
-                    fontSize: '14px',
-                    lineHeight: '22.75px',
-                    color: entry.isPlaceholder
-                      ? 'var(--text-muted)'
-                      : entry.opacity >= 0.6
-                        ? 'var(--text-body-dark)'
-                        : 'var(--text-body)',
+                    fontSize: 'clamp(18px, 2.2vw, 30px)',
+                    lineHeight: '1.35',
+                    color: entry.isPlaceholder ? 'var(--text-muted)' : '#000000',
                   }}
                 >
                   {entry.text}

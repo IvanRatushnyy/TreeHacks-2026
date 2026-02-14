@@ -18,7 +18,12 @@ We are rejecting the "generic AI" aesthetic (soft, blurry, purple/white gradient
 * **Borders:** Use thin, sharp borders (1px solid var(--oxford-navy)) to define data zones. This reflects the "Zero Trust" nature—containers are secure and distinct.
 * **Depth:** No drop shadows. Depth is achieved through color contrast (Dark Navy cards on Mint Cream backgrounds).
 
-## 4. Agent Instructions for Layout
+## 4. Icons
+* **Standard:** Use **Google Material Symbols** (Material Icons) for all UI icons—actions, vitals, attachments, etc. Load via Google Fonts: `Material+Symbols+Outlined`.
+* **Exception:** The Hexi logo and hexagon mascot remain custom SVG (brand identity).
+* **Usage:** Prefer semantic icon names (e.g. `picture_as_pdf`, `attach_email`, `favorite`, `send`) for consistency and accessibility.
+
+## 5. Agent Instructions for Layout
 > When generating views:
 > 1.  Start with the **Mint Cream** background.
 > 2.  Use **Regal Navy** for the primary sidebar or navigation rail.
