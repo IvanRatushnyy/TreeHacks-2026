@@ -183,15 +183,44 @@ const REGEX_RULES: RegexRule[] = [
   // Contact/network
   { label: "EMAIL", re: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, priority: 180 },
   { label: "URL", re: /\bhttps?:\/\/[^\s<>"')]+/gi, priority: 170 },
+  
+  // Phone numbers - multiple patterns for better coverage
   {
     label: "PHONE",
     re: /\b(?:\+?1[\s.-]?)?(?:\(\d{3}\)|\d{3})[\s.-]?\d{3}[\s.-]?\d{4}\b/g,
     priority: 165,
   },
   {
+    label: "PHONE",
+    re: /\b\d{3}[\s.-]?\d{4}\b/g,  // 7-digit local numbers
+    priority: 163,
+  },
+  {
+    label: "PHONE",
+    re: /\b\d{10}\b/g,  // 10 digits no separators
+    priority: 162,
+  },
+  {
+    label: "PHONE",
+    re: /\+\d{1,3}[\s.-]?\d{1,4}[\s.-]?\d{1,4}[\s.-]?\d{1,9}/g,  // International
+    priority: 164,
+  },
+  {
     label: "IP",
     re: /\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b/g,
     priority: 160,
+  },
+
+  // Person names - common patterns
+  {
+    label: "PERSON",
+    re: /\b(?:Patient|Dr\.?|Mr\.?|Mrs\.?|Ms\.?|Miss)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b/g,
+    priority: 250,
+  },
+  {
+    label: "PERSON",
+    re: /\b[A-Z][a-z]+\s+[A-Z][a-z]+\b/g,  // Two capitalized words (First Last)
+    priority: 150,
   },
 
   // IDs
@@ -695,15 +724,15 @@ export default function App() {
     [
       "Patient: Jane Doe (DOB 03/12/2006) presented to Stanford Clinic on March 12, 2026 at 14:23.",
       "MRN: 004512789, FIN 9988776655, Encounter ID: 77123456. Address: 123 Main St, Palo Alto.",
-      "Contact: jane.doe@example.com, (415) 555-1234. Referring MD NPI: 1234567890; DEA: AB1234567.",
+      "Contact: jane.doe@example.com, (415) 555-1234, 650-555-9876, or 4085551111. Cell: +1-408-555-7890.",
       "Labs: Accession: 24-ABC12345; Specimen ID: S-2026-000991; DICOM UID 1.2.840.113619.2.55.3.604688123.78.1456789012.467.",
-      "Network note: PACS source IP 10.21.34.56. Prior SSN 123-45-6789 documented in external fax.",
+      "Network note: PACS source IP 10.21.34.56. Prior SSN 123-45-6789 documented in external fax. Referring MD NPI: 1234567890; DEA: AB1234567.",
     ].join(" ")
   );
   const [rawModelText, setRawModelText] = useState<any[]>([]);
 
   // options
-  const [minScore, setMinScore] = useState(0.2);
+  const [minScore, setMinScore] = useState(0.15);
   const [useHighlight, setUseHighlight] = useState(true);
   const [redactMode, setRedactMode] = useState<"block" | "token">("block");
   const [useRegex, setUseRegex] = useState(true);
