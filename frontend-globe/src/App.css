@@ -11,7 +11,7 @@ body {
     Arial, 'Apple Color Emoji', 'Segoe UI Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: radial-gradient(1200px 700px at 50% 35%, rgba(58, 93, 165, 0.22), rgba(7, 10, 18, 1));
+  background: linear-gradient(180deg, #eef3f9 0%, #dfe7f2 100%);
 }
 
 #root {
@@ -37,18 +37,17 @@ canvas {
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
-  color: rgba(245, 247, 255, 0.92);
-  font-size: 20px;
+  color: rgba(16, 25, 39, 0.95);
+  font-size: 18px;
   font-weight: 600;
-  letter-spacing: 5px;
+  letter-spacing: 3px;
   text-transform: uppercase;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
     monospace;
-  padding: 10px 14px;
-  border-radius: 12px;
-  background: rgba(7, 10, 18, 0.35);
-  border: 1px solid rgba(200, 220, 255, 0.12);
-  backdrop-filter: blur(10px);
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: none;
 }
 
 .appHint {
@@ -57,14 +56,13 @@ canvas {
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
-  color: rgba(220, 230, 255, 0.7);
-  font-size: 12px;
+  color: rgba(24, 37, 56, 0.82);
+  font-size: 11px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
     monospace;
   letter-spacing: 0.8px;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-radius: 999px;
-  background: rgba(7, 10, 18, 0.35);
-  border: 1px solid rgba(200, 220, 255, 0.12);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(35, 52, 77, 0.16);
 }

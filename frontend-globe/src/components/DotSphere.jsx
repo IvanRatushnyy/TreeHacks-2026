@@ -31,28 +31,6 @@ function createCircleTexture() {
   return tex;
 }
 
-function createGlowTexture() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 128;
-  canvas.height = 128;
-  const ctx = canvas.getContext('2d');
-  const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-  gradient.addColorStop(0, 'rgba(255,255,255,1)');
-  gradient.addColorStop(0.35, 'rgba(255,255,255,0.5)');
-  gradient.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.clearRect(0, 0, 128, 128);
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, 128, 128);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.magFilter = THREE.LinearFilter;
-  texture.minFilter = THREE.LinearMipmapLinearFilter;
-  texture.generateMipmaps = true;
-  texture.needsUpdate = true;
-  return texture;
-}
-
 function createLowResNoiseTexture({ width = 128, height = 64, cellSize = 8, seed = 1, anisotropy = 1 } = {}) {
   // Simple value-noise (low frequency) for displacement.
   const rand = (() => {
@@ -127,37 +105,6 @@ function createLowResNoiseTexture({ width = 128, height = 64, cellSize = 8, seed
   return tex;
 }
 
-function createStarfield({ count = 900, radius = 14, jitter = 5, seed = 3 } = {}) {
-  const rand = (() => {
-    let t = seed >>> 0;
-    return () => {
-      t += 0x6D2B79F5;
-      let x = t;
-      x = Math.imul(x ^ (x >>> 15), x | 1);
-      x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
-      return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
-    };
-  })();
-
-  const positions = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) {
-    const u = rand();
-    const v = rand();
-    const theta = 2 * Math.PI * u;
-    const phi = Math.acos(2 * v - 1);
-    const r = radius + (rand() - 0.5) * jitter;
-
-    const x = r * Math.sin(phi) * Math.cos(theta);
-    const y = r * Math.cos(phi);
-    const z = r * Math.sin(phi) * Math.sin(theta);
-
-    positions[i * 3 + 0] = x;
-    positions[i * 3 + 1] = y;
-    positions[i * 3 + 2] = z;
-  }
-  return positions;
-}
-
 function Atmosphere({ radius = 2.14 }) {
   const material = useMemo(() => {
     const mat = new THREE.ShaderMaterial({
@@ -166,9 +113,9 @@ function Atmosphere({ radius = 2.14 }) {
       side: THREE.BackSide,
       blending: THREE.AdditiveBlending,
       uniforms: {
-        uColor: { value: new THREE.Color('#79a8ff') },
+        uColor: { value: new THREE.Color('#3f5574') },
         uPower: { value: 2.4 },
-        uIntensity: { value: 0.55 },
+        uIntensity: { value: 0.09 },
       },
       vertexShader: `
         varying vec3 vNormal;
@@ -253,19 +200,14 @@ function circleOutlinePositions(centerDir, angularRadius, radius, segments = 128
   return out;
 }
 
-function MissingHudArc({ groupRef, dirLocal, strength = 1 }) {
+function MissingHudArc({ groupRef, dirLocal, color, strength = 1 }) {
   const arcRef = useRef();
   const coreMatRef = useRef();
-  const glowMatRef = useRef();
   const { camera } = useThree();
-  const severityColor = useMemo(() => {
-    const low = new THREE.Color('#71d8ff');
-    const high = new THREE.Color('#ff7b7b');
-    return low.lerp(high, clamp01(strength));
-  }, [strength]);
+  const arcColor = useMemo(() => new THREE.Color(color), [color]);
 
   useFrame(() => {
-    if (!arcRef.current || !groupRef.current || !coreMatRef.current || !glowMatRef.current) return;
+    if (!arcRef.current || !groupRef.current || !coreMatRef.current) return;
     const worldDir = dirLocal.clone().applyQuaternion(groupRef.current.quaternion).normalize();
     const camInv = camera.quaternion.clone().invert();
     const camDir = worldDir.clone().applyQuaternion(camInv);
@@ -275,34 +217,21 @@ function MissingHudArc({ groupRef, dirLocal, strength = 1 }) {
     arcRef.current.rotation.z = angle;
 
     const behind = camDir.z < 0 ? 0.12 : 1;
-    coreMatRef.current.opacity = 0.18 + strength * 0.62 * behind;
-    glowMatRef.current.opacity = 0.08 + strength * 0.28 * behind;
+    coreMatRef.current.opacity = 0.12 + strength * 0.38 * behind;
   });
 
   return (
     <group ref={arcRef} renderOrder={50}>
       <mesh>
-        <ringGeometry args={[2.72, 2.82, 64, 1, -0.6, 1.2]} />
+        <ringGeometry args={[2.76, 2.81, 96, 1, -0.52, 1.04]} />
         <meshBasicMaterial
           ref={coreMatRef}
-          color={severityColor}
+          color={arcColor}
           transparent
-          opacity={0.55}
+          opacity={0.4}
           depthWrite={false}
           depthTest={false}
-          blending={THREE.AdditiveBlending}
-        />
-      </mesh>
-      <mesh>
-        <ringGeometry args={[2.68, 2.86, 64, 1, -0.6, 1.2]} />
-        <meshBasicMaterial
-          ref={glowMatRef}
-          color={severityColor}
-          transparent
-          opacity={0.22}
-          depthWrite={false}
-          depthTest={false}
-          blending={THREE.AdditiveBlending}
+          blending={THREE.NormalBlending}
         />
       </mesh>
     </group>
@@ -319,10 +248,9 @@ function DotSphere() {
   
   // Create texture once
   const circleTexture = useMemo(() => createCircleTexture(), []);
-  const glowTexture = useMemo(() => createGlowTexture(), []);
 
   const noiseTexture = useMemo(
-    () => createLowResNoiseTexture({ width: 128, height: 64, cellSize: 10, seed: 7, anisotropy: maxAnisotropy }),
+    () => createLowResNoiseTexture({ width: 128, height: 64, cellSize: 14, seed: 7, anisotropy: maxAnisotropy }),
     [maxAnisotropy]
   );
   
@@ -343,39 +271,38 @@ function DotSphere() {
     ];
   }, []);
 
-  const missingRegions = useMemo(() => {
-    // Define missing-data zones as true spherical circles (caps), not UV blobs.
-    const regions = hotspots.map((h) => {
+  const missingZones = useMemo(() => {
+    const zones = hotspots.map((h) => {
       const missingness = clamp01(1 - h.completeness);
       const radiusDeg = 10 + missingness * 14;
       return {
-        dir: latLonToVec3(h.lat, h.lon, 1).normalize(),
+        key: `hotspot-${h.id}`,
+        dirLocal: latLonToVec3(h.lat, h.lon, 1).normalize(),
         angularRadius: (radiusDeg * Math.PI) / 180,
         strength: missingness * 0.8,
+        color: h.color,
       };
     });
 
-    // Ambient zones.
-    regions.push(
-      { dir: latLonToVec3(55, -30, 1).normalize(), angularRadius: (14 * Math.PI) / 180, strength: 0.22 },
-      { dir: latLonToVec3(-10, 150, 1).normalize(), angularRadius: (12 * Math.PI) / 180, strength: 0.18 }
+    zones.push(
+      {
+        key: 'ambient-1',
+        dirLocal: latLonToVec3(55, -30, 1).normalize(),
+        angularRadius: (14 * Math.PI) / 180,
+        strength: 0.22,
+        color: '#95a5bd',
+      },
+      {
+        key: 'ambient-2',
+        dirLocal: latLonToVec3(-10, 150, 1).normalize(),
+        angularRadius: (12 * Math.PI) / 180,
+        strength: 0.18,
+        color: '#95a5bd',
+      }
     );
 
-    return regions;
+    return zones.filter((zone) => zone.strength > 0.02);
   }, [hotspots]);
-
-  const missingZones = useMemo(
-    () =>
-      missingRegions
-        .map((r, idx) => ({
-          key: `z-${idx}`,
-          dirLocal: r.dir.clone().normalize(),
-          angularRadius: r.angularRadius,
-          strength: clamp01(r.strength),
-        }))
-        .filter((z) => z.strength > 0.02),
-    [missingRegions]
-  );
 
   const missingOverlayMaterial = useMemo(() => {
     const MAX = 16;
@@ -402,39 +329,46 @@ function DotSphere() {
         uDirs: { value: dirs },
         uRadii: { value: radii },
         uStrength: { value: strength },
-        uColor: { value: new THREE.Color('#0b132b') },
-        uBaseAlpha: { value: 0.85 },
+        uColor: { value: new THREE.Color('#24344b') },
+        uBaseAlpha: { value: 0.74 },
+        uDepth: { value: 0.12 },
       },
       vertexShader: `
-        varying vec3 vLocalDir;
-        void main() {
-          vLocalDir = normalize(normal);
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
         #define MAX_ZONES 16
         varying vec3 vLocalDir;
+        varying float vMissing;
         uniform int uCount;
         uniform vec3 uDirs[MAX_ZONES];
         uniform float uRadii[MAX_ZONES];
         uniform float uStrength[MAX_ZONES];
-        uniform vec3 uColor;
-        uniform float uBaseAlpha;
+        uniform float uDepth;
 
         float gauss(float t, float k) { return exp(-t * t * k); }
 
         void main() {
+          vec3 n = normalize(normal);
+          vLocalDir = n;
           float missing = 0.0;
-          vec3 d0 = normalize(vLocalDir);
           for (int i = 0; i < MAX_ZONES; i++) {
             if (i >= uCount) break;
-            float d = clamp(dot(d0, normalize(uDirs[i])), -1.0, 1.0);
+            float d = clamp(dot(n, normalize(uDirs[i])), -1.0, 1.0);
             float a = acos(d);
             float t = a / max(1e-5, uRadii[i]);
             missing += gauss(t, 2.9) * uStrength[i];
           }
-          float alpha = clamp(missing * uBaseAlpha, 0.0, 0.88);
+          vMissing = clamp(missing, 0.0, 1.0);
+          vec3 displaced = position - n * (vMissing * uDepth);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);
+        }
+      `,
+      fragmentShader: `
+        varying vec3 vLocalDir;
+        varying float vMissing;
+        uniform vec3 uColor;
+        uniform float uBaseAlpha;
+
+        void main() {
+          float alpha = clamp(vMissing * uBaseAlpha, 0.0, 0.88);
           alpha = smoothstep(0.02, 0.55, alpha);
           gl_FragColor = vec4(uColor, alpha);
         }
@@ -468,8 +402,6 @@ function DotSphere() {
       .filter(Boolean);
   }, [connections, hotspots]);
 
-  const starfieldPositions = useMemo(() => createStarfield({ count: 1200, radius: 14, jitter: 6, seed: 11 }), []);
-  
   const focusHotspot = useCallback((hotspot) => {
     const targetPos = hotspot.position.clone().normalize();
     setTargetRotation(targetPos);
@@ -503,8 +435,8 @@ function DotSphere() {
     // Create colors for each vertex
     for (let i = 0; i < count; i++) {
       const y = positions[i * 3 + 1] / radius; // [-1,1]
-      const shade = 0.22 + (1 - Math.abs(y)) * 0.26;
-      colors[i * 3] = shade;
+      const shade = 0.25 + (1 - Math.abs(y)) * 0.16;
+      colors[i * 3] = shade - 0.03;
       colors[i * 3 + 1] = shade;
       colors[i * 3 + 2] = shade + 0.03;
     }
@@ -523,9 +455,7 @@ function DotSphere() {
   // Animate the sphere
   useFrame((state) => {
     if (groupRef.current) {
-      // Gentle pulsing effect
-      const scale = 1 + Math.sin(state.clock.elapsedTime * 0.5) * 0.05;
-      groupRef.current.scale.set(scale, scale, scale);
+      groupRef.current.scale.set(1, 1, 1);
       
       // Smooth rotation to target
       if (targetRotation) {
@@ -544,43 +474,23 @@ function DotSphere() {
   
   return (
     <group>
-      <points>
-        <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            count={starfieldPositions.length / 3}
-            array={starfieldPositions}
-            itemSize={3}
-          />
-        </bufferGeometry>
-        <pointsMaterial
-          size={0.02}
-          color="#cfe0ff"
-          transparent
-          opacity={0.35}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-          sizeAttenuation
-        />
-      </points>
-
       <group ref={groupRef}>
         {/* Base globe: low-res displacement for a subtle "hilly" texture + alpha map for missingness */}
         <mesh>
           <sphereGeometry args={[2, 96, 64]} />
           <meshPhysicalMaterial
-            color="#0f172a"
-            roughness={0.75}
-            metalness={0.08}
-            clearcoat={0.5}
-            clearcoatRoughness={0.7}
+            color="#435973"
+            roughness={0.93}
+            metalness={0.03}
+            clearcoat={0.18}
+            clearcoatRoughness={0.92}
             depthWrite
             displacementMap={noiseTexture}
-            displacementScale={0.16}
+            displacementScale={0.22}
             bumpMap={detailTexture}
-            bumpScale={0.09}
-            emissive="#0a1024"
-            emissiveIntensity={0.55}
+            bumpScale={0.05}
+            emissive="#27384f"
+            emissiveIntensity={0.1}
           />
         </mesh>
 
@@ -604,12 +514,12 @@ function DotSphere() {
                 />
               </bufferGeometry>
               <lineBasicMaterial
-                color="#9cc0ff"
+                color={z.color}
                 transparent
-                opacity={0.16 + z.strength * 0.25}
+                opacity={0.2 + z.strength * 0.2}
                 depthWrite={false}
                 depthTest={false}
-                blending={THREE.AdditiveBlending}
+                blending={THREE.NormalBlending}
               />
             </lineLoop>
           );
@@ -633,14 +543,14 @@ function DotSphere() {
             />
           </bufferGeometry>
           <pointsMaterial
-            size={0.045}
+            size={0.028}
             vertexColors
             map={circleTexture}
             transparent
             alphaTest={0.35}
-            opacity={0.75}
+            opacity={0.58}
             depthWrite={false}
-            blending={THREE.AdditiveBlending}
+            blending={THREE.NormalBlending}
             sizeAttenuation={true}
           />
         </points>
@@ -655,7 +565,7 @@ function DotSphere() {
               itemSize={3}
             />
           </bufferGeometry>
-          <lineBasicMaterial color="#5b7cff" opacity={0.16} transparent depthWrite={false} />
+          <lineBasicMaterial color="#3f5575" opacity={0.2} transparent depthWrite={false} />
         </lineSegments>
 
         {/* High-level "data graph" connections between hotspots */}
@@ -670,11 +580,11 @@ function DotSphere() {
               />
             </bufferGeometry>
             <lineBasicMaterial
-              color="#87b0ff"
-              opacity={0.42}
+              color="#314a6a"
+              opacity={0.23}
               transparent
               depthWrite={false}
-              blending={THREE.AdditiveBlending}
+              blending={THREE.NormalBlending}
             />
           </line>
         ))}
@@ -685,10 +595,10 @@ function DotSphere() {
           key={hotspot.id} 
           position={hotspot.position} 
           color={hotspot.color}
-          glowTexture={glowTexture}
           label={hotspot.label}
           completeness={hotspot.completeness}
           selected={hotspot.id === selectedHotspotId}
+          globeRef={groupRef}
           onClick={() => focusHotspot(hotspot)}
         />
       ))}
@@ -697,7 +607,13 @@ function DotSphere() {
       {/* HUD-style directional arcs (like "enemy direction" indicators) */}
       <group ref={hudRef}>
         {missingZones.map((z) => (
-          <MissingHudArc key={`hud-${z.key}`} groupRef={groupRef} dirLocal={z.dirLocal} strength={z.strength} />
+          <MissingHudArc
+            key={`hud-${z.key}`}
+            groupRef={groupRef}
+            dirLocal={z.dirLocal}
+            color={z.color}
+            strength={z.strength}
+          />
         ))}
       </group>
     </group>
@@ -705,24 +621,30 @@ function DotSphere() {
 }
 
 // Hotspot component with glow effect
-function Hotspot({ position, color, glowTexture, label, completeness, selected, onClick }) {
+function Hotspot({ position, color, label, completeness, selected, globeRef, onClick }) {
   const meshRef = useRef();
+  const hotspotRef = useRef();
   const [hovered, setHovered] = useState(false);
+  const [cameraVisible, setCameraVisible] = useState(false);
   useCursor(hovered);
   
   useFrame((state) => {
-    if (meshRef.current) {
-      // Pulsing animation
-      const pulse = 1 + Math.sin(state.clock.elapsedTime * 2) * 0.2;
-      meshRef.current.scale.set(pulse, pulse, pulse);
+    if (meshRef.current) meshRef.current.scale.set(1, 1, 1);
+
+    if (hotspotRef.current && globeRef?.current) {
+      const worldPos = hotspotRef.current.getWorldPosition(new THREE.Vector3());
+      const surfaceNormal = worldPos.clone().normalize();
+      const toCamera = state.camera.position.clone().sub(worldPos).normalize();
+      const visibleNow = surfaceNormal.dot(toCamera) > 0.06;
+      setCameraVisible((prev) => (prev === visibleNow ? prev : visibleNow));
     }
   });
 
-  const showLabel = hovered || selected;
+  const showLabel = cameraVisible || hovered || selected;
   const completenessPct = Math.round(completeness * 100);
   
   return (
-    <group position={position}>
+    <group ref={hotspotRef} position={position}>
       {/* Outer glow ring */}
       <mesh
         ref={meshRef}
@@ -733,13 +655,13 @@ function Hotspot({ position, color, glowTexture, label, completeness, selected, 
         onPointerOver={() => setHovered(true)}
         onPointerOut={() => setHovered(false)}
       >
-        <ringGeometry args={[0.1, 0.15, 32]} />
+        <ringGeometry args={[0.1, 0.13, 32]} />
         <meshBasicMaterial 
           color={color} 
           transparent 
-          opacity={showLabel ? 0.9 : 0.5}
+          opacity={showLabel ? 0.52 : 0.22}
           side={THREE.DoubleSide}
-          blending={THREE.AdditiveBlending}
+          blending={THREE.NormalBlending}
         />
       </mesh>
       
@@ -752,48 +674,37 @@ function Hotspot({ position, color, glowTexture, label, completeness, selected, 
         onPointerOver={() => setHovered(true)}
         onPointerOut={() => setHovered(false)}
       >
-        <sphereGeometry args={[0.08, 16, 16]} />
+        <sphereGeometry args={[0.07, 16, 16]} />
         <meshStandardMaterial 
           color={color}
           emissive={color}
-          emissiveIntensity={showLabel ? 2 : 1}
+          emissiveIntensity={showLabel ? 0.8 : 0.25}
         />
       </mesh>
-      
-      {/* Glow sprite */}
-      <sprite scale={[0.55, 0.55, 1]}>
-        <spriteMaterial 
-          map={glowTexture}
-          color={color} 
-          transparent 
-          opacity={showLabel ? 0.6 : 0.25}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-        />
-      </sprite>
 
       {showLabel && (
         <Html
           center
           style={{
             pointerEvents: 'none',
-            transform: 'translate3d(0,-12px,0)',
+            transform: 'translate3d(0,-16px,0)',
             fontFamily:
               "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-            fontSize: '11px',
+            fontSize: '13px',
             letterSpacing: '0.6px',
-            color: 'rgba(240,245,255,0.92)',
-            background: 'rgba(7,10,18,0.65)',
-            border: '1px solid rgba(200,220,255,0.16)',
+            color: 'rgba(240,245,255,0.94)',
+            background: 'rgba(23,34,50,0.84)',
+            border: '1px solid rgba(126,162,216,0.22)',
             borderRadius: '12px',
-            padding: '6px 10px',
+            padding: '8px 12px',
             whiteSpace: 'nowrap',
-            boxShadow: '0 14px 40px rgba(0,0,0,0.35)',
+            boxShadow: '0 12px 30px rgba(22,31,45,0.28)',
             backdropFilter: 'blur(10px)',
           }}
         >
-          <div style={{ fontWeight: 700 }}>{label}</div>
-          <div style={{ opacity: 0.75 }}>Completeness: {completenessPct}%</div>
+          <div style={{ fontWeight: 700 }}>
+            {label} <span style={{ opacity: 0.75 }}>{completenessPct}%</span>
+          </div>
         </Html>
       )}
     </group>

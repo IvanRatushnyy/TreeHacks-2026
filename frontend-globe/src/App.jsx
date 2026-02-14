@@ -21,13 +21,13 @@ function App() {
         gl={{ antialias: true, alpha: false }}
         camera={{ position: [0, 0, 5.2], fov: 62, near: 0.1, far: 50 }}
       >
-        <color attach="background" args={['#070a12']} />
-        <fog attach="fog" args={['#070a12', 8, 18]} />
+        <color attach="background" args={['#e8eef6']} />
+        <fog attach="fog" args={['#e8eef6', 7.5, 16]} />
 
-        <ambientLight intensity={0.35} />
-        <hemisphereLight args={['#c8d6ff', '#0a0f1f', 0.6]} />
-        <directionalLight position={[6, 4, 8]} intensity={1.2} color="#ffffff" />
-        <directionalLight position={[-8, -3, -6]} intensity={0.6} color="#7aa2ff" />
+        <ambientLight intensity={0.6} />
+        <hemisphereLight args={['#f3f7fc', '#d7e0ec', 0.55]} />
+        <directionalLight position={[6, 4, 8]} intensity={0.62} color="#f6faff" />
+        <directionalLight position={[-8, -3, -6]} intensity={0.22} color="#c4d2e6" />
 
         <DotSphere />
         <OrbitControls 
