@@ -253,27 +253,19 @@ function circleOutlinePositions(centerDir, angularRadius, radius, segments = 128
   return out;
 }
 
-function createHudArcPositions(radius, spread, segments = 60) {
-  const out = new Float32Array((segments + 1) * 3);
-  for (let i = 0; i <= segments; i++) {
-    const t = i / segments;
-    const a = -spread + t * spread * 2;
-    const x = Math.cos(a) * radius;
-    const y = Math.sin(a) * radius;
-    out[i * 3 + 0] = x;
-    out[i * 3 + 1] = y;
-    out[i * 3 + 2] = 0;
-  }
-  return out;
-}
-
 function MissingHudArc({ groupRef, dirLocal, strength = 1 }) {
   const arcRef = useRef();
+  const coreMatRef = useRef();
+  const glowMatRef = useRef();
   const { camera } = useThree();
-  const geometryPositions = useMemo(() => createHudArcPositions(2.78, 0.6, 70), []);
+  const severityColor = useMemo(() => {
+    const low = new THREE.Color('#71d8ff');
+    const high = new THREE.Color('#ff7b7b');
+    return low.lerp(high, clamp01(strength));
+  }, [strength]);
 
   useFrame(() => {
-    if (!arcRef.current || !groupRef.current) return;
+    if (!arcRef.current || !groupRef.current || !coreMatRef.current || !glowMatRef.current) return;
     const worldDir = dirLocal.clone().applyQuaternion(groupRef.current.quaternion).normalize();
     const camInv = camera.quaternion.clone().invert();
     const camDir = worldDir.clone().applyQuaternion(camInv);
@@ -283,28 +275,37 @@ function MissingHudArc({ groupRef, dirLocal, strength = 1 }) {
     arcRef.current.rotation.z = angle;
 
     const behind = camDir.z < 0 ? 0.12 : 1;
-    arcRef.current.material.opacity = 0.12 + strength * 0.62 * behind;
+    coreMatRef.current.opacity = 0.18 + strength * 0.62 * behind;
+    glowMatRef.current.opacity = 0.08 + strength * 0.28 * behind;
   });
 
   return (
-    <line ref={arcRef} renderOrder={50}>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          count={geometryPositions.length / 3}
-          array={geometryPositions}
-          itemSize={3}
+    <group ref={arcRef} renderOrder={50}>
+      <mesh>
+        <ringGeometry args={[2.72, 2.82, 64, 1, -0.6, 1.2]} />
+        <meshBasicMaterial
+          ref={coreMatRef}
+          color={severityColor}
+          transparent
+          opacity={0.55}
+          depthWrite={false}
+          depthTest={false}
+          blending={THREE.AdditiveBlending}
         />
-      </bufferGeometry>
-      <lineBasicMaterial
-        color="#9cc0ff"
-        transparent
-        opacity={0.55}
-        depthWrite={false}
-        depthTest={false}
-        blending={THREE.AdditiveBlending}
-      />
-    </line>
+      </mesh>
+      <mesh>
+        <ringGeometry args={[2.68, 2.86, 64, 1, -0.6, 1.2]} />
+        <meshBasicMaterial
+          ref={glowMatRef}
+          color={severityColor}
+          transparent
+          opacity={0.22}
+          depthWrite={false}
+          depthTest={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+    </group>
   );
 }
 
