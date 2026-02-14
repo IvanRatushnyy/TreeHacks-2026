@@ -1,0 +1,10 @@
+# Saging API - Step 1 & 2
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-dotenv==1.0.1
+pydantic-settings==2.6.1
+# Optional: for USE_AWS_SECRETS=1 (Step 2) and S3/Bedrock
+boto3>=1.35.0
+# LLM: Claude (primary), OpenAI (fallback)
+anthropic>=0.39.0
+openai>=1.0.0
