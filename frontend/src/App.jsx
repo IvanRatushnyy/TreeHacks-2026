@@ -2,7 +2,6 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import HexiCore from './components/HexiCore';
 import TranscriptionStream from './components/TranscriptionStream';
 import InputArea from './components/InputArea';
-import VitalsGrid from './components/VitalsGrid';
 
 export default function App() {
   /* ============================
@@ -183,9 +182,6 @@ export default function App() {
           <InputArea transcript={transcript} isListening={isListening} />
         </section>
       </main>
-
-      {/* ===== FOOTER: Vitals Grid (Desktop only) ===== */}
-      <VitalsGrid />
     </div>
   );
 }

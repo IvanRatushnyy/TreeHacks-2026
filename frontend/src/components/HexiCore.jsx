@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
+import React from 'react';
 
 /* ──────────────────────────────────────────────────────────────
    HexiCore — central hexagon with organic path morphing,
@@ -168,12 +169,34 @@ const HexiCore = forwardRef(function HexiCore(
     return () => cancelAnimationFrame(id);
   }, []);
 
+  // Track if user has ever listened (to change welcome message)
+  const [hasEverListened, setHasEverListened] = useState(false);
+  useEffect(() => {
+    if (isListening) {
+      setHasEverListened(true);
+    }
+  }, [isListening]);
+
   // Context level state for text color (updated from animation loop)
   const [contextLevel, setContextLevel] = useState(0);
   const lastReportedLevelRef = useRef(0); // avoid stale closure
 
-  // Status text
-  const statusText = isListening ? 'Listening...' : 'Ready to Help!';
+  // Status text with fade state
+  const statusText = !hasEverListened ? 'Welcome to Hexi!' : (isListening ? 'Listening...' : 'Ready to Help!');
+  const [displayText, setDisplayText] = useState(statusText);
+  const [textFading, setTextFading] = useState(false);
+
+  // Fade text when statusText changes
+  useEffect(() => {
+    if (displayText !== statusText) {
+      setTextFading(true);
+      const timer = setTimeout(() => {
+        setDisplayText(statusText);
+        setTextFading(false);
+      }, 500); // fade out duration
+      return () => clearTimeout(timer);
+    }
+  }, [statusText, displayText]);
 
   /* ── Pulsing rings state ── */
   const [rings, setRings] = useState([]);
@@ -185,7 +208,7 @@ const HexiCore = forwardRef(function HexiCore(
       // Spawn a ring immediately, then every RING_INTERVAL_MS
       const spawnRing = () => {
         const id = Date.now() + Math.random();
-        setRings((prev) => [...prev, { id, born: Date.now() }]);
+        setRings((prev) => [...prev, { id, born: Date.now(), fadeOut: false }]);
       };
       spawnRing();
       ringIntervalRef.current = setInterval(spawnRing, RING_INTERVAL_MS);
@@ -197,8 +220,21 @@ const HexiCore = forwardRef(function HexiCore(
     } else {
       clearInterval(ringIntervalRef.current);
       clearInterval(ringCleanupRef.current);
-      // Let existing rings finish animating, then clear
-      setTimeout(() => setRings([]), RING_LIFETIME_MS);
+      
+      // Filter rings: remove small ones (hidden behind hexagon), mark visible ones for fade out
+      const now = Date.now();
+      setRings((prev) => prev.filter((r) => {
+        const age = now - r.born;
+        const progress = age / RING_LIFETIME_MS;
+        const radius = RING_START_RADIUS + (RING_MAX_RADIUS - RING_START_RADIUS) * progress;
+        // Keep ring if it's already grown past the hexagon edge (visible)
+        return radius > RING_START_RADIUS + 20; // 20px buffer to ensure visibility
+      }).map(r => ({ ...r, fadeOut: true })));
+      
+      // Continue cleanup for remaining visible rings
+      ringCleanupRef.current = setInterval(() => {
+        setRings((prev) => prev.filter((r) => Date.now() - r.born < RING_LIFETIME_MS));
+      }, 1000);
     }
     return () => {
       clearInterval(ringIntervalRef.current);
@@ -269,7 +305,7 @@ const HexiCore = forwardRef(function HexiCore(
       <div className="relative" style={{ width: hexSize, height: hexSize }}>
         {/* Pulsing rings — absolutely positioned, centered on the hex */}
         {rings.map((ring) => (
-          <PulsingRing key={ring.id} born={ring.born} />
+          <PulsingRing key={ring.id} born={ring.born} fadeOut={ring.fadeOut} />
         ))}
 
         {/* Hexagon */}
@@ -382,8 +418,11 @@ const HexiCore = forwardRef(function HexiCore(
               ref={(el) => { pathDarkRef.current = el; darkOverlayRef.current = el; }}
             />
 
-            {/* Microphone icon */}
-            <g style={{ opacity: 0.85 }}>
+            {/* Microphone icon - fades out when listening */}
+            <g style={{ 
+              opacity: isListening ? 0 : 0.85,
+              transition: 'opacity 0.4s ease-out',
+            }}>
               <mask id="micMask" style={{ maskType: 'alpha' }} maskUnits="userSpaceOnUse" x="100" y="105" width="32" height="32">
                 <rect x="100.358" y="105.283" width="30.7846" height="30.7846" fill="#D9D9D9" />
               </mask>
@@ -394,13 +433,20 @@ const HexiCore = forwardRef(function HexiCore(
                 />
               </g>
             </g>
+
+            {/* Sound visualizer - fades in when listening */}
+            <g style={{ 
+              opacity: isListening ? 0.85 : 0,
+              transition: 'opacity 0.4s ease-out',
+            }}>
+              <SoundVisualizer audioLevel={audioLevel} />
+            </g>
           </svg>
         </div>
       </div>
 
       {/* ── Status text ── */}
       <div
-        key={statusText}
         className="font-display text-center capitalize relative z-10"
         style={{
           // Interpolate color from light navy (powder blue) to dark navy based on contextLevel
@@ -416,11 +462,11 @@ const HexiCore = forwardRef(function HexiCore(
           letterSpacing: '2.1px',
           marginTop: '16px',
           opacity: 0,
-          animation: hasMounted ? 'textFadeIn 0.8s ease-out 0.6s forwards' : 'none',
-          transition: 'color 0.6s ease',
+          animation: hasMounted && !textFading ? 'textFadeIn 0.8s ease-out 0.6s forwards' : 'none',
+          transition: 'color 0.6s ease, opacity 0.5s ease-out',
         }}
       >
-        {statusText}
+        {displayText}
       </div>
     </div>
   );
@@ -429,18 +475,20 @@ const HexiCore = forwardRef(function HexiCore(
 export default HexiCore;
 
 /* ── Pulsing Ring sub-component ── */
-function PulsingRing({ born }) {
+function PulsingRing({ born, fadeOut = false }) {
+  const [isFading, setIsFading] = React.useState(false);
+  
+  React.useEffect(() => {
+    if (fadeOut && !isFading) {
+      setIsFading(true);
+    }
+  }, [fadeOut, isFading]);
+
   const elapsed = Date.now() - born;
   const progress = Math.min(elapsed / RING_LIFETIME_MS, 1);
-  // Radius grows from hexagon edge to max
   const radius = RING_START_RADIUS + (RING_MAX_RADIUS - RING_START_RADIUS) * progress;
-  // Opacity: fade in quickly, then fade out
-  const opacity = progress < 0.1
-    ? progress / 0.1 * 0.2
-    : 0.2 * (1 - (progress - 0.1) / 0.9);
   const size = radius * 2;
 
-  // Re-render via CSS animation instead of JS for smoothness
   return (
     <svg
       className="absolute pointer-events-none"
@@ -454,9 +502,58 @@ function PulsingRing({ born }) {
         transform: 'translate(-50%, -50%)',
         zIndex: 1,
         animation: `ringPulse ${RING_LIFETIME_MS}ms ease-out forwards`,
+        ...(isFading ? { opacity: 0, transition: 'opacity 0.6s ease-out' } : {}),
       }}
     >
       <circle cx={radius} cy={radius} r={radius - 0.5} stroke="#134074" strokeOpacity="1" strokeWidth="1" />
     </svg>
+  );
+}
+
+/* ── Sound Visualizer — 3 bars that react to audioLevel ── */
+function SoundVisualizer({ audioLevel }) {
+  // 3 bars with different heights based on audio level
+  // Center position in the hex viewBox (same as mic icon area)
+  const baseX = 109;
+  const baseY = 120;
+  const barWidth = 4;
+  const barGap = 3;
+  const maxBarHeight = 18;
+  
+  // Different multipliers for each bar to create varied motion
+  const bar1Height = Math.max(4, maxBarHeight * audioLevel * 0.8 + Math.sin(Date.now() / 100) * 2);
+  const bar2Height = Math.max(4, maxBarHeight * audioLevel * 1.13 + Math.sin(Date.now() / 120 + 1) * 2);
+  const bar3Height = Math.max(4, maxBarHeight * audioLevel * 0.9 + Math.sin(Date.now() / 90 + 2) * 2);
+
+  return (
+    <g>
+      {/* Bar 1 */}
+      <rect
+        x={baseX}
+        y={baseY - bar1Height / 2}
+        width={barWidth}
+        height={bar1Height}
+        fill="white"
+        rx={2}
+      />
+      {/* Bar 2 */}
+      <rect
+        x={baseX + barWidth + barGap}
+        y={baseY - bar2Height / 2}
+        width={barWidth}
+        height={bar2Height}
+        fill="white"
+        rx={2}
+      />
+      {/* Bar 3 */}
+      <rect
+        x={baseX + (barWidth + barGap) * 2}
+        y={baseY - bar3Height / 2}
+        width={barWidth}
+        height={bar3Height}
+        fill="white"
+        rx={2}
+      />
+    </g>
   );
 }

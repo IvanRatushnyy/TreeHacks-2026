@@ -130,6 +130,16 @@
   }
 }
 
+/* Ring fade out - quick fade from current state */
+@keyframes ringFadeOut {
+  0% {
+    opacity: 0.2;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 /* Textarea cursor blink when listening */
 @keyframes listeningBlink {
   0%, 100% { opacity: 1; }

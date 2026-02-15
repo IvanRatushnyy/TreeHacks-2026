@@ -37,13 +37,13 @@ function ActiveEntry() {
     <p
       className="font-body leading-relaxed"
       style={{
-        color: '#000000',
-        fontSize: 'clamp(18px, 2.2vw, 30px)',
+        color: '#133f72',
+        fontSize: 'clamp(12px, 1.7vw, 24px)',
         lineHeight: '1.35',
       }}
     >
       {'Current medication confirmed: '}
-      <span style={{ color: '#000000' }}>
+      <span style={{ color: '#133f72' }}>
         Lisinopril 10mg
       </span>
       {' daily. Patient adheres'}
@@ -154,7 +154,7 @@ export default function TranscriptionStream() {
                 style={{
                   fontSize: '12px',
                   lineHeight: '16px',
-                  color: entry.isPlaceholder ? 'var(--text-muted)' : '#000000',
+                  color: entry.active ? '#133f72' : entry.isPlaceholder ? 'var(--text-muted)' : '#000000',
                   fontFamily: entry.isPlaceholder ? "'Liberation Mono', monospace" : undefined,
                 }}
               >
@@ -170,7 +170,7 @@ export default function TranscriptionStream() {
                 <p
                   className="font-body"
                   style={{
-                    fontSize: 'clamp(18px, 2.2vw, 30px)',
+                    fontSize: 'clamp(12px, 1.7vw, 24px)',
                     lineHeight: '1.35',
                     color: entry.isPlaceholder ? 'var(--text-muted)' : '#000000',
                   }}

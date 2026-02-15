@@ -38,8 +38,8 @@ export default function InputArea({ transcript = '', isListening = false }) {
         gap: '8px',
       }}
     >
-      {/* Textarea wrapper with send button */}
-      <div className="relative w-full" style={{ height: '80px' }}>
+      {/* Textarea wrapper with + icon, file pill, and send button */}
+      <div className="relative w-full" style={{ height: '140px' }}>
         <textarea
           ref={textareaRef}
           className="w-full h-full rounded-lg font-body"
@@ -47,7 +47,7 @@ export default function InputArea({ transcript = '', isListening = false }) {
             backgroundColor: '#ffffff',
             border: '1px solid var(--border-medium)',
             borderRadius: '8px',
-            padding: '17px 49px 17px 17px',
+            padding: '17px 17px 50px 17px',
             fontSize: '16px',
             lineHeight: '22.75px',
             color: isListening && !value
@@ -65,6 +65,87 @@ export default function InputArea({ transcript = '', isListening = false }) {
           onChange={(e) => setValue(e.target.value)}
         />
 
+        {/* White background overlay for bottom controls - inside textarea bounds */}
+        <div
+          className="absolute"
+          style={{
+            bottom: '1px',
+            left: '1px',
+            right: '1px',
+            height: '44px',
+            backgroundColor: '#ffffff',
+            borderBottomLeftRadius: '7px',
+            borderBottomRightRadius: '7px',
+            pointerEvents: 'none',
+            zIndex: 0,
+          }}
+        />
+
+        {/* Bottom left: + icon and file pill */}
+        <div
+          className="absolute flex items-center"
+          style={{
+            bottom: '12px',
+            left: '12px',
+            gap: '8px',
+            zIndex: 1,
+          }}
+        >
+          {/* + icon button */}
+          <button
+            className="flex items-center justify-center"
+            style={{
+              width: '20px',
+              height: '20px',
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              padding: '0',
+            }}
+            type="button"
+            aria-label="Add file"
+          >
+            <span
+              className="material-symbols-outlined"
+              style={{ fontSize: '20px', color: '#133f72' }}
+            >
+              add
+            </span>
+          </button>
+
+          {/* File pill */}
+          <div
+            className="inline-flex items-center"
+            style={{
+              backgroundColor: 'rgba(19, 64, 116, 0.1)',
+              height: '20px',
+              padding: '0 4px',
+            }}
+          >
+            <span
+              className="font-body"
+              style={{
+                color: 'var(--regal-navy)',
+                fontSize: '12px',
+                lineHeight: '22.75px',
+              }}
+            >
+              MRI.png
+            </span>
+            <span
+              className="font-body font-bold cursor-pointer"
+              style={{
+                color: 'var(--regal-navy)',
+                fontSize: '12px',
+                lineHeight: '22.75px',
+                marginLeft: '8px',
+              }}
+            >
+              x
+            </span>
+          </div>
+        </div>
+
         {/* Send button */}
         <button
           className="absolute flex items-center justify-center"
@@ -79,6 +160,7 @@ export default function InputArea({ transcript = '', isListening = false }) {
             border: 'none',
             cursor: 'pointer',
             padding: '0',
+            zIndex: 1,
           }}
           type="button"
           aria-label="Send"
@@ -90,56 +172,6 @@ export default function InputArea({ transcript = '', isListening = false }) {
             send
           </span>
         </button>
-      </div>
-
-      {/* File tag + Add Data row */}
-      <div
-        className="flex items-center justify-between w-full"
-        style={{ height: '20px' }}
-      >
-        {/* Attached file tag */}
-        <div
-          className="inline-flex items-center"
-          style={{
-            backgroundColor: 'rgba(19, 64, 116, 0.1)',
-            height: '20px',
-            padding: '0 4px',
-          }}
-        >
-          <span
-            className="font-body"
-            style={{
-              color: 'var(--regal-navy)',
-              fontSize: '12px',
-              lineHeight: '22.75px',
-            }}
-          >
-            MRI.png
-          </span>
-          <span
-            className="font-body font-bold cursor-pointer"
-            style={{
-              color: 'var(--regal-navy)',
-              fontSize: '12px',
-              lineHeight: '22.75px',
-              marginLeft: '8px',
-            }}
-          >
-            x
-          </span>
-        </div>
-
-        {/* Add Data link */}
-        <span
-          className="font-display font-bold cursor-pointer"
-          style={{
-            color: '#133f72',
-            fontSize: '12px',
-            lineHeight: '15px',
-          }}
-        >
-          + ADD DATA
-        </span>
       </div>
     </div>
   );
