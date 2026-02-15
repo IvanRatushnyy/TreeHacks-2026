@@ -25,7 +25,7 @@ from tenacity import retry, wait_exponential_jitter, stop_after_attempt
 MODEL = "claude-sonnet-4-20250514"  # change to the Claude model you have access to
 OUT_PATH = "./synthetic_train.jsonl"
 
-NUM_EXAMPLES_TO_GENERATE = 2000
+NUM_EXAMPLES_TO_GENERATE = 5_000
 BATCH_SIZE = 10  # how many pairs Claude returns per call
 SLEEP_BETWEEN_CALLS_SEC = 0.0  # gentle rate limiting
 

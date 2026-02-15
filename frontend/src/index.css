@@ -152,6 +152,24 @@
   to { transform: rotate(360deg); }
 }
 
+@keyframes piiGradientLoad {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.pii-processing-bg {
+  background: linear-gradient(
+    90deg,
+    rgba(141, 169, 196, 0.18),
+    rgba(19, 64, 116, 0.18),
+    rgba(238, 244, 237, 0.22),
+    rgba(141, 169, 196, 0.18)
+  );
+  background-size: 240% 240%;
+  animation: piiGradientLoad 1.4s ease-in-out infinite;
+}
+
 /* ===== SCROLLBAR ===== */
 ::-webkit-scrollbar {
   width: 4px;
