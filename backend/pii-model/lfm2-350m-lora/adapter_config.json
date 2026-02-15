@@ -29,10 +29,15 @@
   "rank_pattern": {},
   "revision": null,
   "target_modules": [
+    "w2",
+    "out_proj",
+    "in_proj",
+    "o_proj",
+    "w3",
     "q_proj",
     "k_proj",
     "v_proj",
-    "o_proj"
+    "w1"
   ],
   "target_parameters": null,
   "task_type": "CAUSAL_LM",

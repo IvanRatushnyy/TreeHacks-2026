@@ -26,7 +26,11 @@ def main():
         r=16,
         lora_alpha=32,
         lora_dropout=0.05,
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
+        target_modules = [
+    "q_proj","k_proj","v_proj","o_proj",   # attention
+    "w1", "w2", "w3",                     # MLP / GLU
+    "in_proj", "out_proj"                 # convolutional layers, if present
+],
         task_type="CAUSAL_LM",
     )
 
@@ -46,7 +50,7 @@ def main():
 
     args = SFTConfig(
         output_dir=OUT_DIR,
-        num_train_epochs=10,          # set high; early stopping will cut it short
+        num_train_epochs=35,          # set high; early stopping will cut it short
         per_device_train_batch_size=2,
         gradient_accumulation_steps=8,
         learning_rate=2e-4,
