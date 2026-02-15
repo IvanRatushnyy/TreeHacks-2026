@@ -37,9 +37,9 @@ const KnowledgeGlobe = forwardRef(function KnowledgeGlobe(
   const center = size / 2;
   const pointRadius = 8;
 
-  // Blue color from palette
-  const blueColor = '#134074';
-  const filledColor = '#22C55E';
+  // Colors for filled vs unfilled gaps
+  const unfilledColor = '#DC2626'; // Red for unknown/gaps
+  const filledColor = '#22C55E';   // Green for known/filled
 
   // Handle fade transitions when selectedGap changes
   useEffect(() => {
@@ -289,7 +289,7 @@ const KnowledgeGlobe = forwardRef(function KnowledgeGlobe(
           const isSelected = selectedGap?.id === gap.id;
           const isHovered = hoveredGap?.id === gap.id;
           
-          const color = isFilled ? filledColor : blueColor;
+          const color = isFilled ? filledColor : unfilledColor;
           const isActive = isSelected || isHovered;
 
           return (
@@ -341,11 +341,11 @@ const KnowledgeGlobe = forwardRef(function KnowledgeGlobe(
                   <div
                     className="px-3 py-1.5 rounded-lg font-display text-sm font-medium"
                     style={{
-                      backgroundColor: '#134074',
+                      backgroundColor: color,
                       color: 'white',
                     }}
                   >
-                    {gap.topic || gap.field || 'Topic'}
+                    {isFilled ? '✓ ' : ''}{gap.topic || gap.field || 'Topic'}
                   </div>
                 </div>
               )}
@@ -373,12 +373,12 @@ const KnowledgeGlobe = forwardRef(function KnowledgeGlobe(
         >
           {displayedGap ? (
             <div onClick={(e) => e.stopPropagation()}>
-              {/* Topic header - no bullet */}
+              {/* Topic header - color matches filled/unfilled state */}
               <span
                 className="font-display font-bold text-sm uppercase tracking-wide block mb-3"
-                style={{ color: '#134074' }}
+                style={{ color: displayedGap.filled ? filledColor : unfilledColor }}
               >
-                {displayedGap.topic || displayedGap.field || 'Topic'}
+                {displayedGap.filled ? '✓ ' : ''}{displayedGap.topic || displayedGap.field || 'Topic'}
               </span>
 
               {/* Questions list - left aligned with title, + icon overflows left */}
