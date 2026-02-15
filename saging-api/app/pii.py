@@ -15,6 +15,7 @@ def redact_text(text: str) -> dict[str, Any]:
     Redact PII from text. If PII_SERVICE_URL is set, call it; else use in-app fallback.
     Returns { "redacted_text", "spans": [ {"start", "end", "label"} ], "error" }.
     """
+    print("Received request to redact: " + text)
     if settings.pii_service_url:
         return _redact_via_service(text)
     return _redact_fallback(text)

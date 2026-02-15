@@ -74,6 +74,51 @@ export default function TranscriptionStream({
 
   const hasContent = entries.length > 0 || interimText;
 
+  const renderTextWithHighlights = (text, spans = []) => {
+    const source = String(text ?? '');
+    if (!spans.length) return source;
+
+    const sorted = [...spans]
+      .filter((s) => Number.isFinite(s.start) && Number.isFinite(s.end) && s.end > s.start)
+      .sort((a, b) => a.start - b.start || b.end - a.end);
+
+    const parts = [];
+    let cursor = 0;
+    let key = 0;
+
+    for (const s of sorted) {
+      const start = Math.max(0, s.start);
+      const end = Math.min(source.length, s.end);
+      if (start < cursor || end <= start) continue;
+
+      if (start > cursor) {
+        parts.push(<span key={`t-${key++}`}>{source.slice(cursor, start)}</span>);
+      }
+
+      parts.push(
+        <mark
+          key={`m-${key++}`}
+          title={s.label || 'SENSITIVE'}
+          style={{
+            backgroundColor: 'rgba(245, 158, 11, 0.22)',
+            color: 'inherit',
+            padding: '0 2px',
+            borderRadius: '3px',
+          }}
+        >
+          {source.slice(start, end)}
+        </mark>
+      );
+      cursor = end;
+    }
+
+    if (cursor < source.length) {
+      parts.push(<span key={`t-${key++}`}>{source.slice(cursor)}</span>);
+    }
+
+    return parts;
+  };
+
   // Group entries by minute - only show timestamp when minute changes
   const shouldShowTimestamp = (entry, index) => {
     if (index === 0) return true;
@@ -272,19 +317,28 @@ export default function TranscriptionStream({
                 </div>
               ) : (
                 /* Standard message */
-                <p
-                  className="font-body leading-relaxed"
+                <div
+                  className={entry.piiProcessing ? 'pii-processing-bg' : ''}
                   style={{
-                    fontSize: 'clamp(12px, 1.7vw, 24px)',
-                    lineHeight: '1.35',
-                    color: entry.speaker === 'ai' ? '#133f72' : '#000000',
-                    whiteSpace: 'pre-wrap',
-                    margin: '0',
-                    padding: '0',
+                    display: 'inline-block',
+                    borderRadius: '8px',
+                    padding: entry.piiProcessing ? '4px 6px' : '0',
                   }}
                 >
-                  {entry.text.trim()}
-                </p>
+                  <p
+                    className="font-body leading-relaxed"
+                    style={{
+                      fontSize: 'clamp(12px, 1.7vw, 24px)',
+                      lineHeight: '1.35',
+                      color: entry.speaker === 'ai' ? '#133f72' : '#000000',
+                      whiteSpace: 'pre-wrap',
+                      margin: '0',
+                      padding: '0',
+                    }}
+                  >
+                    {renderTextWithHighlights(entry.text, entry.sensitiveSpans)}
+                  </p>
+                </div>
               )}
             </div>
           );

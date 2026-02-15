@@ -6,7 +6,15 @@ import InputArea from './components/InputArea';
 import QuestionPanel from './components/QuestionPanel';
 import LiteraturePanel from './components/LiteraturePanel';
 import { useVoiceSession } from './hooks/useVoiceSession';
-import { chatComplete, detectKnowledgeGaps, getNextQuestion } from './api';
+import {
+  chatComplete,
+  detectKnowledgeGaps,
+  getNextQuestion,
+  getFrontendRedactorStatus,
+  getSensitiveSpans,
+  initFrontendRedactor,
+  onFrontendRedactorStatus,
+} from './api';
 
 // Pre-cached demo data for Margaret Chen DLBCL case
 const DEMO_CASE = {
@@ -166,6 +174,7 @@ export default function App() {
   const [literaturePanelVisible, setLiteraturePanelVisible] = useState(false);
   const [literatureQuery, setLiteratureQuery] = useState('');
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [redactorStatus, setRedactorStatus] = useState(getFrontendRedactorStatus());
 
   // Load file from localStorage on mount
   useEffect(() => {
@@ -180,6 +189,14 @@ export default function App() {
         console.error('[App] Failed to parse stored file:', e);
       }
     }
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onFrontendRedactorStatus((status) => setRedactorStatus(status));
+    initFrontendRedactor().catch((err) => {
+      console.error('[App] Failed to initialize frontend redactor:', err);
+    });
+    return unsubscribe;
   }, []);
 
   // Handle file upload
@@ -213,24 +230,24 @@ export default function App() {
 
   // Handler for voice transcription entries
   const handleAddUserEntry = useCallback((entry) => {
-    // When user provides input, commit pending question to entries first
-    if (pendingQuestion) {
-      const questionEntry = {
-        id: Date.now() - 1,
-        time: pendingQuestion.time,
-        text: pendingQuestion.text,
-        speaker: 'ai',
-        isQuestion: true,
-        isInterim: false,
-      };
-      setConversationEntries((prev) => [...prev, questionEntry]);
-      setPendingQuestion(null);
-    }
-    setConversationEntries((prev) => [
-      ...prev,
-      { ...entry, speaker: 'user' }
-    ]);
-  }, [pendingQuestion]);
+    const entryWithMeta = { ...entry, speaker: 'user', sensitiveSpans: [], piiProcessing: true };
+    setConversationEntries((prev) => [...prev, entryWithMeta]);
+
+    getSensitiveSpans(entryWithMeta.text)
+      .then((spans) => {
+        setConversationEntries((prev) =>
+          prev.map((e) =>
+            e.id === entryWithMeta.id ? { ...e, sensitiveSpans: spans, piiProcessing: false } : e
+          )
+        );
+      })
+      .catch((err) => {
+        console.error('[App] Failed to detect sensitive spans:', err);
+        setConversationEntries((prev) =>
+          prev.map((e) => (e.id === entryWithMeta.id ? { ...e, piiProcessing: false } : e))
+        );
+      });
+  }, []);
 
   /* ============================
    *  Voice session hook
@@ -710,8 +727,23 @@ export default function App() {
       text: message,
       speaker: 'user',
       isInterim: false,
+      sensitiveSpans: [],
+      piiProcessing: true,
     };
     setConversationEntries((prev) => [...prev, userEntry]);
+
+    getSensitiveSpans(userEntry.text)
+      .then((spans) => {
+        setConversationEntries((prev) =>
+          prev.map((e) => (e.id === userEntry.id ? { ...e, sensitiveSpans: spans, piiProcessing: false } : e))
+        );
+      })
+      .catch((err) => {
+        console.error('[App] Failed to detect sensitive spans:', err);
+        setConversationEntries((prev) =>
+          prev.map((e) => (e.id === userEntry.id ? { ...e, piiProcessing: false } : e))
+        );
+      });
 
     // Check if this message fills any existing gaps
     if (knowledgeGaps.length > 0) {
@@ -733,7 +765,7 @@ export default function App() {
         .filter(e => e.speaker === 'user')
         .map(e => e.text)
         .join('\n');
-      
+
       const response = await chatComplete(fullTranscript, fileContent);
       
       if (response?.suggested_note || response?.recommendations) {
@@ -788,6 +820,21 @@ export default function App() {
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-white">
+      <div
+        className="fixed top-4 right-4 z-50 rounded-full"
+        style={{
+          width: '12px',
+          height: '12px',
+          backgroundColor: redactorStatus.ready
+            ? '#22c55e'
+            : redactorStatus.phase === 'loading'
+              ? '#eab308'
+              : '#94a3b8',
+          boxShadow: '0 0 0 2px rgba(255,255,255,0.9), 0 0 0 3px rgba(15,23,42,0.2)',
+          opacity: redactorStatus.phase === 'loading' ? 0.8 : 1,
+        }}
+        title={redactorStatus.error || redactorStatus.message}
+      />
       {/* ===== MAIN CONTENT ===== */}
       <main
         className="flex flex-1 min-h-0 overflow-hidden"

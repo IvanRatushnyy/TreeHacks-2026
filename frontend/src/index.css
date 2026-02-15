@@ -152,20 +152,22 @@
   to { transform: rotate(360deg); }
 }
 
-/* Chat entry fade-in animation */
-@keyframes chatEntryFadeIn {
-  0% {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+@keyframes piiGradientLoad {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
-.chat-entry-fade-in {
-  animation: chatEntryFadeIn 0.3s ease-out forwards;
+.pii-processing-bg {
+  background: linear-gradient(
+    90deg,
+    rgba(141, 169, 196, 0.18),
+    rgba(19, 64, 116, 0.18),
+    rgba(238, 244, 237, 0.22),
+    rgba(141, 169, 196, 0.18)
+  );
+  background-size: 240% 240%;
+  animation: piiGradientLoad 1.4s ease-in-out infinite;
 }
 
 /* ===== SCROLLBAR ===== */
