@@ -1,8 +1,5 @@
 # Hexi — AI Nurse Copilot 🏥
 
-<p align="center">
-  <img src="frontend/public/hexi-logo.png" alt="Hexi Logo" width="120" />
-</p>
 
 **Hexi** is an AI-powered nurse copilot that helps healthcare professionals gather complete patient information through intelligent questioning. Built at TreeHacks 2026.
 
