@@ -8,12 +8,14 @@ import { useEffect, useRef } from 'react';
  *  - interimText (string) : current interim transcription text
  *  - isRecording (bool)   : whether currently recording
  *  - suggestions (array)  : AI suggestions for missing info
+ *  - onSuggestionClick (fn): callback when suggestion is clicked to add to chat
  */
 export default function TranscriptionStream({ 
   entries = [], 
   interimText = '',
   isRecording = false,
   suggestions = [],
+  onSuggestionClick,
 }) {
   const bottomRef = useRef(null);
   const scrollContainerRef = useRef(null);
@@ -75,7 +77,7 @@ export default function TranscriptionStream({
               textAlign: 'center',
             }}
           >
-            Export
+            Export:
           </span>
           <div className="flex items-center" style={{ gap: '10px' }}>
             <span
@@ -327,13 +329,32 @@ export default function TranscriptionStream({
               {suggestions.map((sug, idx) => (
                 <li
                   key={idx}
-                  className="font-body"
-                  style={{
-                    fontSize: '14px',
-                    color: 'var(--text-body-dark)',
-                  }}
+                  className="flex items-start gap-2 group"
                 >
-                  • {sug.question}
+                  {/* Add button */}
+                  <button
+                    onClick={() => onSuggestionClick?.(sug)}
+                    className="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all mt-0.5"
+                    style={{
+                      backgroundColor: 'rgba(19, 64, 116, 0.1)',
+                      color: '#134074',
+                    }}
+                    title="Add to conversation"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                    </svg>
+                  </button>
+                  <span
+                    className="font-body flex-1 cursor-pointer hover:text-[#134074] transition-colors"
+                    style={{
+                      fontSize: '14px',
+                      color: 'var(--text-body-dark)',
+                    }}
+                    onClick={() => onSuggestionClick?.(sug)}
+                  >
+                    {sug.question}
+                  </span>
                 </li>
               ))}
             </ul>

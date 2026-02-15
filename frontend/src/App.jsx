@@ -51,13 +51,97 @@ ADDITIONAL PATIENT FACTORS:
 
 CLINICAL CORRELATION RECOMMENDED for treatment planning.`,
   knowledgeGaps: [
-    { id: 1, question: "Has the patient noticed any new swollen lymph nodes or lumps?", field: "lymphadenopathy", priority: "critical", position: { lat: 40, lng: -30 }, filled: false },
-    { id: 2, question: "Have you experienced any night sweats or fevers?", field: "b_symptoms", priority: "critical", position: { lat: -20, lng: 45 }, filled: false },
-    { id: 3, question: "How much weight have you lost in the past 6 months?", field: "weight_loss", priority: "critical", position: { lat: 60, lng: 120 }, filled: false },
-    { id: 4, question: "How would you rate your energy levels lately?", field: "fatigue", priority: "important", position: { lat: -45, lng: -90 }, filled: false },
-    { id: 5, question: "Are you currently taking any heart or blood pressure medications?", field: "cardiac_meds", priority: "critical", position: { lat: 15, lng: 170 }, filled: false },
-    { id: 6, question: "How has your kidney function been monitored recently?", field: "renal_function", priority: "important", position: { lat: -60, lng: -150 }, filled: false },
-    { id: 7, question: "Do you have any allergies to chemotherapy drugs?", field: "allergies", priority: "critical", position: { lat: 30, lng: 90 }, filled: false },
+    { 
+      id: 1, 
+      topic: "Lymph Nodes",
+      questions: [
+        "Has the patient noticed any new swollen lymph nodes or lumps?",
+        "Are any lymph nodes painful or tender?",
+        "How long have the swollen nodes been present?"
+      ],
+      field: "lymphadenopathy", 
+      priority: "critical", 
+      position: { lat: 40, lng: -30 }, 
+      filled: false 
+    },
+    { 
+      id: 2, 
+      topic: "B Symptoms",
+      questions: [
+        "Have you experienced any night sweats or fevers?",
+        "Do you wake up drenched in sweat?",
+        "Have you had unexplained fevers over 38°C?"
+      ],
+      field: "b_symptoms", 
+      priority: "critical", 
+      position: { lat: -20, lng: 45 }, 
+      filled: false 
+    },
+    { 
+      id: 3, 
+      topic: "Weight Loss",
+      questions: [
+        "How much weight have you lost in the past 6 months?",
+        "Has your appetite changed recently?",
+        "Have you been trying to lose weight?"
+      ],
+      field: "weight_loss", 
+      priority: "critical", 
+      position: { lat: 60, lng: 120 }, 
+      filled: false 
+    },
+    { 
+      id: 4, 
+      topic: "Energy Levels",
+      questions: [
+        "How would you rate your energy levels lately?",
+        "Do you feel more fatigued than usual?",
+        "Can you complete your daily activities?"
+      ],
+      field: "fatigue", 
+      priority: "important", 
+      position: { lat: -45, lng: -90 }, 
+      filled: false 
+    },
+    { 
+      id: 5, 
+      topic: "Cardiac Medications",
+      questions: [
+        "Are you currently taking any heart or blood pressure medications?",
+        "What is your current blood pressure medication regimen?",
+        "Have you had any recent changes to cardiac medications?"
+      ],
+      field: "cardiac_meds", 
+      priority: "critical", 
+      position: { lat: 15, lng: 170 }, 
+      filled: false 
+    },
+    { 
+      id: 6, 
+      topic: "Kidney Function",
+      questions: [
+        "How has your kidney function been monitored recently?",
+        "Do you know your last creatinine level?",
+        "Have you noticed changes in urination?"
+      ],
+      field: "renal_function", 
+      priority: "important", 
+      position: { lat: -60, lng: -150 }, 
+      filled: false 
+    },
+    { 
+      id: 7, 
+      topic: "Drug Allergies",
+      questions: [
+        "Do you have any allergies to chemotherapy drugs?",
+        "Have you had any previous reactions to medications?",
+        "Are you allergic to any antibiotics?"
+      ],
+      field: "allergies", 
+      priority: "critical", 
+      position: { lat: 30, lng: 90 }, 
+      filled: false 
+    },
   ],
 };
 
@@ -221,6 +305,110 @@ export default function App() {
     );
   }, []);
 
+  // Helper to format topic name from field
+  const formatTopicName = (field) => {
+    if (!field) return null;
+    return field
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  // Demo function to test globe visualization (fallback)
+  const demoGlobe = useCallback(() => {
+    const demoGaps = [
+      { 
+        id: 1, 
+        topic: "Chief Complaint",
+        questions: [
+          "What brings you in today?",
+          "How would you describe your main concern?",
+          "When did this issue start bothering you?"
+        ],
+        field: "chief_complaint", 
+        priority: "critical", 
+        position: { lat: 40, lng: -30 }, 
+        filled: false 
+      },
+      { 
+        id: 2, 
+        topic: "Symptom Onset",
+        questions: [
+          "When did this start?",
+          "Was the onset sudden or gradual?",
+          "What were you doing when it started?"
+        ],
+        field: "onset", 
+        priority: "critical", 
+        position: { lat: -20, lng: 45 }, 
+        filled: false 
+      },
+      { 
+        id: 3, 
+        topic: "Medications",
+        questions: [
+          "Are you taking any medications?",
+          "Do you take any over-the-counter medications?",
+          "Have you recently started or stopped any medications?"
+        ],
+        field: "medications", 
+        priority: "critical", 
+        position: { lat: 60, lng: 120 }, 
+        filled: false 
+      },
+      { 
+        id: 4, 
+        topic: "Pain Level",
+        questions: [
+          "On a scale of 0-10, how would you rate your discomfort?",
+          "Does anything make the pain better or worse?",
+          "How would you describe the pain?"
+        ],
+        field: "severity", 
+        priority: "important", 
+        position: { lat: -45, lng: -90 }, 
+        filled: false 
+      },
+      { 
+        id: 5, 
+        topic: "Allergies",
+        questions: [
+          "Any allergies to medications?",
+          "Have you had any allergic reactions before?",
+          "Are you allergic to any foods or environmental factors?"
+        ],
+        field: "allergies", 
+        priority: "critical", 
+        position: { lat: 15, lng: 170 }, 
+        filled: false 
+      },
+      { 
+        id: 6, 
+        topic: "Medical History",
+        questions: [
+          "Do you have any medical conditions I should know about?",
+          "Have you been hospitalized before?",
+          "Do you have any chronic conditions?"
+        ],
+        field: "pmh", 
+        priority: "important", 
+        position: { lat: -60, lng: -150 }, 
+        filled: false 
+      },
+    ];
+    setKnowledgeGaps(demoGaps);
+    
+    // Add AI message about gaps
+    const aiEntry = {
+      id: Date.now(),
+      time: formatTime(),
+      text: "Let me help gather some information. I've highlighted key questions we need to address - you can see them on the globe below.",
+      speaker: 'ai',
+      isInterim: false,
+    };
+    setConversationEntries((prev) => [...prev, aiEntry]);
+  }, []);
+
   // Detect knowledge gaps using the API
   const analyzeKnowledgeGaps = useCallback(async () => {
     // Build transcript from conversation entries
@@ -231,7 +419,31 @@ export default function App() {
     try {
       const result = await detectKnowledgeGaps(transcript, [], 'general');
       if (result.gaps && result.gaps.length > 0) {
-        setKnowledgeGaps(result.gaps.map(g => ({ ...g, filled: false })));
+        // Transform gaps to include topic and questions array
+        const transformedGaps = result.gaps.map((g, idx) => {
+          // Generate topic name from field or question
+          const topicName = g.topic || formatTopicName(g.field) || 'General Info';
+          
+          // Generate questions array - use existing questions or create from single question
+          const questions = g.questions || [
+            g.question,
+            `Can you provide more details about ${topicName.toLowerCase()}?`,
+            `Is there anything else about ${topicName.toLowerCase()} we should know?`
+          ];
+          
+          return {
+            ...g,
+            topic: topicName,
+            questions: questions,
+            filled: false,
+            position: {
+              lat: (Math.random() - 0.5) * 120,
+              lng: (idx / result.gaps.length) * 360 - 180,
+            },
+          };
+        });
+        
+        setKnowledgeGaps(transformedGaps);
         
         // Add AI message about gaps
         const aiEntry = {
@@ -258,30 +470,7 @@ export default function App() {
       // Fall back to demo data if API fails
       demoGlobe();
     }
-  }, [conversationEntries]);
-
-  // Demo function to test globe visualization (fallback)
-  const demoGlobe = useCallback(() => {
-    const demoGaps = [
-      { id: 1, question: "What brings you in today?", field: "chief_complaint", priority: "critical", position: { lat: 40, lng: -30 }, filled: false },
-      { id: 2, question: "When did this start?", field: "onset", priority: "critical", position: { lat: -20, lng: 45 }, filled: false },
-      { id: 3, question: "Are you taking any medications?", field: "medications", priority: "critical", position: { lat: 60, lng: 120 }, filled: false },
-      { id: 4, question: "On a scale of 0-10, how would you rate your discomfort?", field: "severity", priority: "important", position: { lat: -45, lng: -90 }, filled: false },
-      { id: 5, question: "Any allergies to medications?", field: "allergies", priority: "critical", position: { lat: 15, lng: 170 }, filled: false },
-      { id: 6, question: "Do you have any medical conditions I should know about?", field: "pmh", priority: "important", position: { lat: -60, lng: -150 }, filled: false },
-    ];
-    setKnowledgeGaps(demoGaps);
-    
-    // Add AI message about gaps
-    const aiEntry = {
-      id: Date.now(),
-      time: formatTime(),
-      text: "Let me help gather some information. I've highlighted key questions we need to address - you can see them on the globe below.",
-      speaker: 'ai',
-      isInterim: false,
-    };
-    setConversationEntries((prev) => [...prev, aiEntry]);
-  }, []);
+  }, [conversationEntries, demoGlobe, formatTopicName]);
 
   // Load Margaret Chen demo case (for TreeHacks demo)
   const loadDemoCase = useCallback(() => {
@@ -723,12 +912,13 @@ export default function App() {
             </div>
           </div>
 
-          {/* Hexagon + Globe container with animation */}
+          {/* Hexagon container - positioned near top */}
           <div
             className="flex flex-col items-center"
             style={{
               transition: 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
-              transform: globeVisible ? 'translateY(-280px) scale(0.7)' : 'translateY(0) scale(1)',
+              transform: globeVisible ? 'translateY(0) scale(0.45)' : 'translateY(0) scale(1)',
+              marginTop: '20px',
             }}
           >
             <HexiCore
@@ -739,17 +929,16 @@ export default function App() {
             />
           </div>
 
-          {/* Knowledge Globe - positioned below hexagon, only interactive when visible */}
+          {/* Knowledge Globe - positioned in center-lower area with space for questions */}
           <div
-            className="absolute flex items-center justify-center"
+            className="absolute flex items-start justify-center"
             style={{
-              top: '50%',
+              top: '35%',
               left: '50%',
-              transform: 'translate(-50%, -50%)',
-              marginTop: globeVisible ? '120px' : '0px',
+              transform: 'translateX(-50%)',
               opacity: globeVisible ? 1 : 0,
               pointerEvents: globeVisible ? 'auto' : 'none',
-              transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+              transition: 'opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
             }}
           >
             <KnowledgeGlobe
@@ -758,7 +947,7 @@ export default function App() {
               darkness={globeDarkness}
               visible={globeVisible}
               onGapClick={handleGapClick}
-              size={380}
+              size={312}
             />
           </div>
 
@@ -787,6 +976,7 @@ export default function App() {
               interimText={interimText}
               isRecording={isRecording}
               suggestions={suggestions}
+              onSuggestionClick={handleGapClick}
             />
           </div>
 
@@ -914,7 +1104,7 @@ export default function App() {
             {/* Mobile Globe */}
             <div
               style={{
-                marginTop: globeVisible ? '40px' : '0px',
+                marginTop: globeVisible ? '20px' : '0px',
                 opacity: globeVisible ? 1 : 0,
                 transform: globeVisible ? 'scale(1) translateY(0)' : 'scale(0.8) translateY(20px)',
                 transition: 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)',
@@ -926,7 +1116,7 @@ export default function App() {
                 darkness={globeDarkness}
                 visible={globeVisible}
                 onGapClick={handleGapClick}
-                size={320}
+                size={240}
               />
             </div>
           </div>
