@@ -24,10 +24,12 @@ uvicorn app.main:app --reload --port 8000
 ```
 
 - **API:** http://localhost:8000  
-- **Swagger UI:** http://localhost:8000/docs  
+- **Swagger UI (all endpoints):** http://localhost:8000/docs  
 - **ReDoc:** http://localhost:8000/redoc  
 - **Health:** http://localhost:8000/health  
 - **Ready:** http://localhost:8000/ready  
+
+**If /docs shows no endpoints:** run from inside `saging-api` with `uvicorn app.main:app --reload --port 8000` (not `main:app` from repo root). Then open http://localhost:8000 — you should see a list of endpoints; /docs will show the full UI.  
 
 ## AWS (bucket + Secrets Manager)
 

@@ -1,16 +1,45 @@
-# React + Vite
+# Saging Frontend (Hexi)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite app. Voice questionnaire uses Web Speech API and talks to the Saging API.
 
-Currently, two official plugins are available:
+## Prerequisites
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Node 18+** and **npm** on your PATH, or **nvm** (recommended).
+- Backend running at `http://localhost:8000` (see `saging-api/`).
 
-## React Compiler
+## Run (pick one)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Option A: Script (sources nvm if present, then install + dev)
 
-## Expanding the ESLint configuration
+```bash
+cd frontend
+chmod +x run.sh
+./run.sh
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Option B: Manual (ensure Node is on PATH first)
+
+```bash
+# If using nvm:
+nvm use          # uses .nvmrc (Node 20)
+# or: nvm install 20
+
+cd frontend
+npm install
+npm run dev
+```
+
+### If `npm` or `node` not found
+
+- **Install Node:** https://nodejs.org (LTS) or `brew install node`.
+- **Or use nvm:** https://github.com/nvm-sh/nvm  
+  Then: `nvm install 20`, `nvm use 20`, and run the commands above from `frontend/`.
+
+## URLs
+
+- **App:** http://localhost:5173 (after `npm run dev`).
+- **API** (run from `saging-api/`): http://localhost:8000 — frontend proxies `/api` to it in dev.
+
+## Voice testing
+
+See [TESTING_VOICE.md](./TESTING_VOICE.md).

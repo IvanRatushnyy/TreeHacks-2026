@@ -1,6 +1,9 @@
 # Design Document: Typography System
 **Primary Goal:** Dramatic contrast between "AI Intelligence" and "Medical Data."
 
+**Font source:** We use only **Manrope** and **Space Grotesk** from Google Fonts. No other typefaces. Load via:
+`https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap`
+
 ## 1. Font Families
 
 ### **Display & AI Voice: Space Grotesk**
