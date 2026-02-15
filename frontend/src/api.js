@@ -11,6 +11,9 @@ let initPromise = null;
 const sentenceEntitiesCache = new Map();
 const sentenceEntitiesInFlight = new Map();
 const MAX_SENTENCE_CACHE = 1200;
+const textAnalysisCache = new Map();
+const textAnalysisInFlight = new Map();
+const MAX_TEXT_ANALYSIS_CACHE = 400;
 
 const redactorListeners = new Set();
 const redactorState = {
@@ -192,32 +195,89 @@ function applyEntitiesToSentence(sentence, entities, labelCounts, placeholderMap
 }
 
 async function redactTextBySentence(text) {
-  console.log("Asked to redact: " + text)
-  const chunks = splitBySentence(text);
-  const labelCounts = {};
-  const placeholderMap = new Map();
-  const redactedChunks = [];
-
-  for (const chunk of chunks) {
-    if (!chunk.trim()) {
-      redactedChunks.push(chunk);
-      continue;
-    }
-
-    console.log("Trying to classify: " + chunk)
-    const entities = await classifySentenceEntities(chunk);
-    console.log("Entities: " + JSON.stringify(entities))
-    const redacted = applyEntitiesToSentence(chunk, entities, labelCounts, placeholderMap);
-    redactedChunks.push(redacted);
-  }
-
+  const analysis = await analyzeTextForPii(text);
   return {
-    redactedText: redactedChunks.join(''),
-    placeholderMap,
+    redactedText: analysis.redactedText,
+    placeholderMap: new Map(analysis.placeholderEntries),
   };
 }
 
 export async function getSensitiveSpans(text) {
+  const analysis = await analyzeTextForPii(text);
+  return analysis.spans;
+}
+
+function cloneAnalysis(analysis) {
+  return {
+    redactedText: analysis.redactedText,
+    placeholderEntries: analysis.placeholderEntries.map(([k, v]) => [k, v]),
+    spans: analysis.spans.map((s) => ({ ...s })),
+  };
+}
+
+async function analyzeTextForPii(text) {
+  const input = text || '';
+  const key = String(input);
+
+  const cached = textAnalysisCache.get(key);
+  if (cached) return cloneAnalysis(cached);
+
+  const inflight = textAnalysisInFlight.get(key);
+  if (inflight) return cloneAnalysis(await inflight);
+
+  const work = (async () => {
+    const chunks = splitBySentence(input);
+    const labelCounts = {};
+    const placeholderMap = new Map();
+    const redactedChunks = [];
+    const spans = [];
+    let offset = 0;
+
+    for (const chunk of chunks) {
+      if (!chunk.trim()) {
+        redactedChunks.push(chunk);
+        offset += chunk.length;
+        continue;
+      }
+
+      const entities = await classifySentenceEntities(chunk);
+      const localSpans = entitiesToSentenceSpans(chunk, entities);
+      for (const s of localSpans) {
+        spans.push({
+          start: s.start + offset,
+          end: s.end + offset,
+          label: s.label,
+        });
+      }
+
+      const redacted = applyEntitiesToSentence(chunk, entities, labelCounts, placeholderMap);
+      redactedChunks.push(redacted);
+      offset += chunk.length;
+    }
+
+    return {
+      redactedText: redactedChunks.join(''),
+      placeholderEntries: Array.from(placeholderMap.entries()),
+      spans,
+    };
+  })();
+
+  textAnalysisInFlight.set(key, work);
+  try {
+    const result = await work;
+    textAnalysisCache.set(key, result);
+    if (textAnalysisCache.size > MAX_TEXT_ANALYSIS_CACHE) {
+      const first = textAnalysisCache.keys().next().value;
+      if (first !== undefined) textAnalysisCache.delete(first);
+    }
+    return cloneAnalysis(result);
+  } finally {
+    textAnalysisInFlight.delete(key);
+  }
+}
+
+export async function getSensitiveSpansUncached(text) {
+  // Useful for debugging; default app flow should use getSensitiveSpans().
   const input = text || '';
   const chunks = splitBySentence(input);
   const spans = [];

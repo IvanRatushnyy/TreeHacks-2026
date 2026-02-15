@@ -189,7 +189,6 @@ export default function App() {
   const [questionPanelVisible, setQuestionPanelVisible] = useState(false);
   const [literaturePanelVisible, setLiteraturePanelVisible] = useState(false);
   const [literatureQuery, setLiteratureQuery] = useState('');
-  const [isDemoMode, setIsDemoMode] = useState(false);
   const [redactorStatus, setRedactorStatus] = useState(getFrontendRedactorStatus());
 
   // Load file from localStorage on mount
@@ -509,29 +508,40 @@ export default function App() {
     try {
       const result = await detectKnowledgeGaps(transcript, [], 'general');
       if (result.gaps && result.gaps.length > 0) {
+        const now = Date.now();
         // Transform gaps to include topic and questions array
         const transformedGaps = result.gaps.map((g, idx) => {
           // Generate topic name from field or question
-          const topicName = g.topic || formatTopicName(g.field) || 'General Info';
+          const topicName = g?.topic || formatTopicName(g?.field) || 'General Info';
           
           // Generate questions array - use existing questions or create from single question
-          const questions = g.questions || [
-            g.question,
+          const questions = (Array.isArray(g?.questions) ? g.questions : [
+            g?.question,
             `Can you provide more details about ${topicName.toLowerCase()}?`,
             `Is there anything else about ${topicName.toLowerCase()} we should know?`
-          ];
+          ]).filter(Boolean);
+
+          const primaryQuestion = questions[0] || `Can you tell me more about ${topicName.toLowerCase()}?`;
           
           return {
             ...g,
+            id: g?.id ?? `gap-${now}-${idx}`,
             topic: topicName,
             questions: questions,
+            question: g?.question || primaryQuestion,
             filled: false,
             position: {
               lat: (Math.random() - 0.5) * 120,
               lng: (idx / result.gaps.length) * 360 - 180,
             },
           };
-        });
+        }).filter((g) => Boolean(g.id) && Boolean(g.question) && Array.isArray(g.questions) && g.questions.length > 0);
+
+        // Guard: if API returns malformed gaps, still show the floating-circle visualization.
+        if (!transformedGaps.length) {
+          demoGlobe();
+          return;
+        }
         
         setKnowledgeGaps(transformedGaps);
         
@@ -552,6 +562,9 @@ export default function App() {
           speaker: 'ai',
           isInterim: false,
         });
+      } else {
+        // No usable gaps returned - keep Analyze UX working with fallback visualization.
+        demoGlobe();
       }
     } catch (err) {
       console.error('[App] Failed to analyze knowledge gaps:', err);
@@ -559,35 +572,6 @@ export default function App() {
       demoGlobe();
     }
   }, [conversationEntries, demoGlobe, formatTopicName, addConversationEntry]);
-
-  // Load Margaret Chen demo case (for TreeHacks demo)
-  const loadDemoCase = useCallback(() => {
-    setIsDemoMode(true);
-    
-    // Set file content from demo pathology report
-    const fileData = {
-      name: 'pathology_report_margaret_chen.txt',
-      size: DEMO_CASE.pathologyReport.length,
-      type: 'text/plain',
-      lastModified: Date.now(),
-    };
-    setUploadedFile(fileData);
-    setFileContent(DEMO_CASE.pathologyReport);
-    
-    // Load pre-cached knowledge gaps
-    setKnowledgeGaps(DEMO_CASE.knowledgeGaps);
-    
-    // Add initial AI message (reset entries first)
-    const initialEntry = {
-      id: `ai-demo-init-${getMonotonicTimestamp()}`,
-      sortKey: getMonotonicTimestamp(),
-      time: formatTime(),
-      text: `I've loaded the pathology report for ${DEMO_CASE.patient.name}, age ${DEMO_CASE.patient.age}. The diagnosis is Diffuse Large B-Cell Lymphoma, GCB subtype. I've identified ${DEMO_CASE.knowledgeGaps.length} key questions we need to address before treatment planning. You can click on any marker on the globe or use the Questions panel to see what information we still need.`,
-      speaker: 'ai',
-      isInterim: false,
-    };
-    setConversationEntries([initialEntry]);
-  }, []);
 
   // Handle marking a question as answered
   const handleMarkAnswered = useCallback((gapId) => {
@@ -611,9 +595,9 @@ export default function App() {
 
   // Handle opening literature search
   const handleOpenLiterature = useCallback((query = '') => {
-    setLiteratureQuery(query || (isDemoMode ? 'DLBCL GCB treatment' : ''));
+    setLiteratureQuery(query || '');
     setLiteraturePanelVisible(true);
-  }, [isDemoMode]);
+  }, []);
 
   // Handle adding literature finding to discussion
   const handleAddLiteratureToDiscussion = useCallback((result) => {
@@ -906,34 +890,17 @@ export default function App() {
           >
             {/* Left side buttons */}
             <div className="flex items-center gap-2">
-              {/* Demo Case button (for TreeHacks) */}
-              <button
-                onClick={loadDemoCase}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-display transition-all"
-                style={{
-                  backgroundColor: isDemoMode ? 'rgba(34, 197, 94, 0.15)' : 'rgba(19, 64, 116, 0.1)',
-                  border: `1px solid ${isDemoMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(19, 64, 116, 0.3)'}`,
-                  color: isDemoMode ? '#15803D' : '#134074',
-                }}
-                title="Load Demo Case"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
-                </svg>
-                DEMO
-              </button>
-
               {/* Analyze Gaps button */}
               <button
                 onClick={analyzeKnowledgeGaps}
-                disabled={conversationEntries.length === 0 && !isDemoMode}
+                disabled={conversationEntries.length === 0}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-display transition-all"
                 style={{
-                  backgroundColor: (conversationEntries.length > 0 || isDemoMode) ? 'rgba(141, 169, 196, 0.15)' : 'rgba(141, 169, 196, 0.05)',
+                  backgroundColor: conversationEntries.length > 0 ? 'rgba(141, 169, 196, 0.15)' : 'rgba(141, 169, 196, 0.05)',
                   border: '1px solid rgba(141, 169, 196, 0.3)',
-                  color: (conversationEntries.length > 0 || isDemoMode) ? '#5A7A9A' : '#B0C4D8',
-                  cursor: (conversationEntries.length > 0 || isDemoMode) ? 'pointer' : 'not-allowed',
-                  opacity: (conversationEntries.length > 0 || isDemoMode) ? 1 : 0.6,
+                  color: conversationEntries.length > 0 ? '#5A7A9A' : '#B0C4D8',
+                  cursor: conversationEntries.length > 0 ? 'pointer' : 'not-allowed',
+                  opacity: conversationEntries.length > 0 ? 1 : 0.6,
                 }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -990,7 +957,7 @@ export default function App() {
             className="flex flex-col items-center"
             style={{
               position: 'absolute',
-              top: globeVisible ? `calc(70px + ${isDemoMode ? '10px' : '0px'})` : '50%',
+              top: globeVisible ? '70px' : '50%',
               left: '50%',
               transform: globeVisible 
                 ? 'translate(-50%, 0) scale(0.75)' 
@@ -1078,21 +1045,6 @@ export default function App() {
           <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-10">
             {/* Left buttons */}
             <div className="flex items-center gap-1">
-              {/* Demo button */}
-              <button
-                onClick={loadDemoCase}
-                className="flex items-center justify-center w-10 h-10 rounded-lg"
-                style={{
-                  backgroundColor: isDemoMode ? 'rgba(34, 197, 94, 0.15)' : 'rgba(19, 64, 116, 0.1)',
-                  border: `1px solid ${isDemoMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(19, 64, 116, 0.3)'}`,
-                  color: isDemoMode ? '#15803D' : '#134074',
-                }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
-                </svg>
-              </button>
-              
               {/* Questions button */}
               {knowledgeGaps.length > 0 && (
                 <button
