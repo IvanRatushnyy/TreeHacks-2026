@@ -347,7 +347,7 @@ export default function TranscriptionStream({
                       padding: '0',
                     }}
                   >
-                    {renderTextWithHighlights(entry.text, entry.sensitiveSpans)}
+                    {renderTextWithHighlights(entry.text.trim(), entry.sensitiveSpans)}
                   </p>
                 </div>
               )}
@@ -514,7 +514,7 @@ export default function TranscriptionStream({
                   transition: 'opacity 0.2s ease-in-out',
                 }}
               >
-                {displayedQuestion.text}
+                {displayedQuestion.text.trim()}
               </p>
             </div>
           </div>

@@ -362,10 +362,11 @@ const HexiCore = forwardRef(function HexiCore(
                 gradientUnits="userSpaceOnUse"
                 gradientTransform={computeGradientTransform(GRAD_CONFIGS[0], 0)}
               >
-                <stop stopColor="#2E5A8C" />
-                <stop offset="0.25" stopColor="#3B6A98" />
+                <stop stopColor="#1F3F5C" />
+                <stop offset="0.15" stopColor="#2E5A8C" />
+                <stop offset="0.35" stopColor="#3B6A98" />
                 <stop offset="0.5" stopColor="#4C78A4" />
-                <stop offset="0.75" stopColor="#5C86B0" />
+                <stop offset="0.7" stopColor="#5C86B0" />
                 <stop offset="1" stopColor="#6D94BC" />
               </radialGradient>
 
@@ -377,9 +378,11 @@ const HexiCore = forwardRef(function HexiCore(
                 gradientUnits="userSpaceOnUse"
                 gradientTransform={computeGradientTransform(GRAD_CONFIGS[1], 0)}
               >
-                <stop stopColor="#2E5A8C" stopOpacity="0.3" />
-                <stop offset="0.35" stopColor="#3B6A98" stopOpacity="0.22" />
-                <stop offset="0.7" stopColor="#5C86B0" stopOpacity="0.11" />
+                <stop stopColor="#1F3F5C" stopOpacity="0.45" />
+                <stop offset="0.15" stopColor="#2E5A8C" stopOpacity="0.42" />
+                <stop offset="0.3" stopColor="#2A5280" stopOpacity="0.38" />
+                <stop offset="0.5" stopColor="#3B6A98" stopOpacity="0.28" />
+                <stop offset="0.7" stopColor="#5C86B0" stopOpacity="0.16" />
                 <stop offset="1" stopColor="#6D94BC" stopOpacity="0" />
               </radialGradient>
 
@@ -391,9 +394,10 @@ const HexiCore = forwardRef(function HexiCore(
                 gradientUnits="userSpaceOnUse"
                 gradientTransform={computeGradientTransform(GRAD_CONFIGS[2], 0)}
               >
-                <stop stopColor="#99AFCC" stopOpacity="0.28" />
-                <stop offset="0.3" stopColor="#7FA5CD" stopOpacity="0.18" />
-                <stop offset="0.6" stopColor="#5C86B0" stopOpacity="0.09" />
+                <stop stopColor="#99AFCC" stopOpacity="0.32" />
+                <stop offset="0.2" stopColor="#8BA2C5" stopOpacity="0.24" />
+                <stop offset="0.4" stopColor="#7FA5CD" stopOpacity="0.2" />
+                <stop offset="0.6" stopColor="#5C86B0" stopOpacity="0.1" />
                 <stop offset="1" stopColor="#4C78A4" stopOpacity="0" />
               </radialGradient>
 
@@ -407,10 +411,11 @@ const HexiCore = forwardRef(function HexiCore(
                   { cx: 115, cy: 115, r: 140, angle0: 0, orbitR: 20, orbitFreq: 0.06, rotFreq: 0.04, phase: 1.5 }, 0
                 )}
               >
-                <stop stopColor="#0B2545" />
-                <stop offset="0.25" stopColor="#13315C" />
-                <stop offset="0.6" stopColor="#134074" />
-                <stop offset="1" stopColor="#0B2545" stopOpacity="0.8" />
+                <stop stopColor="#0A1F3D" />
+                <stop offset="0.2" stopColor="#0B2545" />
+                <stop offset="0.4" stopColor="#13315C" />
+                <stop offset="0.7" stopColor="#134074" />
+                <stop offset="1" stopColor="#0B2545" stopOpacity="0.9" />
               </radialGradient>
             </defs>
 
