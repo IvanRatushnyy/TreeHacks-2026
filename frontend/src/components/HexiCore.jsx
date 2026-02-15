@@ -354,7 +354,7 @@ const HexiCore = forwardRef(function HexiCore(
             style={{ display: 'block', overflow: 'visible' }}
           >
             <defs>
-              {/* Gradient 1 — light-dominant base (Powder Blue → Mint Cream → light Regal) */}
+              {/* Gradient 1 — darker medium-blue base */}
               <radialGradient
                 ref={grad1Ref}
                 id="hexiGrad1"
@@ -362,13 +362,14 @@ const HexiCore = forwardRef(function HexiCore(
                 gradientUnits="userSpaceOnUse"
                 gradientTransform={computeGradientTransform(GRAD_CONFIGS[0], 0)}
               >
-                <stop stopColor="#8DA9C4" />
-                <stop offset="0.35" stopColor="#B8CCE0" />
-                <stop offset="0.7" stopColor="#D5E2EF" />
-                <stop offset="1" stopColor="#EEF4ED" />
+                <stop stopColor="#2E5A8C" />
+                <stop offset="0.25" stopColor="#3B6A98" />
+                <stop offset="0.5" stopColor="#4C78A4" />
+                <stop offset="0.75" stopColor="#5C86B0" />
+                <stop offset="1" stopColor="#6D94BC" />
               </radialGradient>
 
-              {/* Gradient 2 — soft depth (subtle navy touches) */}
+              {/* Gradient 2 — depth layer (darker blue accent) */}
               <radialGradient
                 ref={grad2Ref}
                 id="hexiGrad2"
@@ -376,12 +377,13 @@ const HexiCore = forwardRef(function HexiCore(
                 gradientUnits="userSpaceOnUse"
                 gradientTransform={computeGradientTransform(GRAD_CONFIGS[1], 0)}
               >
-                <stop stopColor="#134074" stopOpacity="0.25" />
-                <stop offset="0.5" stopColor="#8DA9C4" stopOpacity="0.15" />
-                <stop offset="1" stopColor="#EEF4ED" stopOpacity="0" />
+                <stop stopColor="#2E5A8C" stopOpacity="0.3" />
+                <stop offset="0.35" stopColor="#3B6A98" stopOpacity="0.22" />
+                <stop offset="0.7" stopColor="#5C86B0" stopOpacity="0.11" />
+                <stop offset="1" stopColor="#6D94BC" stopOpacity="0" />
               </radialGradient>
 
-              {/* Gradient 3 — highlight shimmer */}
+              {/* Gradient 3 — subtle edge highlight */}
               <radialGradient
                 ref={grad3Ref}
                 id="hexiGrad3"
@@ -389,9 +391,10 @@ const HexiCore = forwardRef(function HexiCore(
                 gradientUnits="userSpaceOnUse"
                 gradientTransform={computeGradientTransform(GRAD_CONFIGS[2], 0)}
               >
-                <stop stopColor="#FFFFFF" stopOpacity="0.3" />
-                <stop offset="0.4" stopColor="#D5E2EF" stopOpacity="0.15" />
-                <stop offset="1" stopColor="#8DA9C4" stopOpacity="0" />
+                <stop stopColor="#99AFCC" stopOpacity="0.28" />
+                <stop offset="0.3" stopColor="#7FA5CD" stopOpacity="0.18" />
+                <stop offset="0.6" stopColor="#5C86B0" stopOpacity="0.09" />
+                <stop offset="1" stopColor="#4C78A4" stopOpacity="0" />
               </radialGradient>
 
               {/* Gradient 4 — dark overlay (context fill) */}
@@ -454,13 +457,13 @@ const HexiCore = forwardRef(function HexiCore(
       <div
         className="font-display text-center capitalize relative z-10"
         style={{
-          // Interpolate color from light navy (powder blue) to dark navy based on contextLevel
+          // Interpolate color from darker blue to dark navy based on contextLevel
           color: `rgb(${
-            Math.round(141 - contextLevel * (141 - 11))
+            Math.round(46 - contextLevel * (46 - 11))
           }, ${
-            Math.round(169 - contextLevel * (169 - 37))
+            Math.round(90 - contextLevel * (90 - 37))
           }, ${
-            Math.round(196 - contextLevel * (196 - 69))
+            Math.round(140 - contextLevel * (140 - 69))
           })`,
           fontSize: '14px',
           fontWeight: 400,

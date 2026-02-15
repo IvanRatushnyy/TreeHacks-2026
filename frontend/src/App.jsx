@@ -894,12 +894,12 @@ export default function App() {
             className="flex flex-col items-center"
             style={{
               position: 'absolute',
-              top: globeVisible ? '70px' : '50%',
+              top: globeVisible ? `calc(70px + ${isDemoMode ? '10px' : '0px'})` : '50%',
               left: '50%',
               transform: globeVisible 
                 ? 'translate(-50%, 0) scale(0.75)' 
                 : 'translate(-50%, -50%) scale(1)',
-              transition: 'all 0.8s linear',
+              transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
               zIndex: 20,
             }}
           >

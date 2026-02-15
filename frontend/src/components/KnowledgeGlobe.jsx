@@ -437,16 +437,17 @@ const KnowledgeGlobe = forwardRef(function KnowledgeGlobe(
             </div>
           ) : (
             /* Default hint text */
-            <p
+            <div
               className="font-body text-center"
               style={{
                 fontSize: '13px',
-                color: '#8DA9C4',
+                color: '#134074',
                 paddingTop: '20px',
               }}
             >
-              Hover for topic gaps, click for questions
-            </p>
+              <div>Hover for topic gaps</div>
+              <div>Click for questions</div>
+            </div>
           )}
         </div>
       </div>
