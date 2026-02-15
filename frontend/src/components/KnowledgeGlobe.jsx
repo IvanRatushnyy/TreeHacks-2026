@@ -29,6 +29,7 @@ const KnowledgeGlobe = forwardRef(function KnowledgeGlobe(
   const [hoveredQuestionIdx, setHoveredQuestionIdx] = useState(null);
   const [fadeState, setFadeState] = useState('visible'); // 'visible', 'fading-out', 'fading-in'
   const [displayedGap, setDisplayedGap] = useState(null);
+  const [addedQuestionIdx, setAddedQuestionIdx] = useState(null); // Track which question was added
 
   // Globe and orbit sizing
   const globeRadius = size / 2 - 30;
@@ -43,8 +44,9 @@ const KnowledgeGlobe = forwardRef(function KnowledgeGlobe(
   // Handle fade transitions when selectedGap changes
   useEffect(() => {
     if (selectedGap && displayedGap && selectedGap.id !== displayedGap.id) {
-      // Different gap selected - fade out then in
+      // Different gap selected - fade out then in, reset added question
       setFadeState('fading-out');
+      setAddedQuestionIdx(null);
       const timer = setTimeout(() => {
         setDisplayedGap(selectedGap);
         setFadeState('fading-in');
@@ -52,13 +54,15 @@ const KnowledgeGlobe = forwardRef(function KnowledgeGlobe(
       }, 200);
       return () => clearTimeout(timer);
     } else if (selectedGap && !displayedGap) {
-      // New gap selected from none
+      // New gap selected from none, reset added question
       setDisplayedGap(selectedGap);
+      setAddedQuestionIdx(null);
       setFadeState('fading-in');
       setTimeout(() => setFadeState('visible'), 50);
     } else if (!selectedGap && displayedGap) {
       // Gap deselected - fade out
       setFadeState('fading-out');
+      setAddedQuestionIdx(null);
       const timer = setTimeout(() => {
         setDisplayedGap(null);
         setFadeState('visible');
@@ -186,9 +190,9 @@ const KnowledgeGlobe = forwardRef(function KnowledgeGlobe(
       const delta = time - lastTimeRef.current;
       lastTimeRef.current = time;
 
-      // Rotate by default, stop when hovering
+      // Rotate by default, stop when hovering (slower rotation)
       if (!isHovering) {
-        setPointsRotation(prev => (prev + delta * 0.008) % 360);
+        setPointsRotation(prev => (prev + delta * 0.003) % 360);
       }
 
       rafRef.current = requestAnimationFrame(animate);
@@ -235,12 +239,23 @@ const KnowledgeGlobe = forwardRef(function KnowledgeGlobe(
     }
   }, [selectedGap]);
 
-  // Handle adding question to chat
-  const handleAddQuestion = useCallback((question) => {
+  // Handle adding question to chat with fade effect
+  const handleAddQuestion = useCallback((question, idx) => {
     if (selectedGap) {
-      onGapClick?.({ ...selectedGap, question });
+      // If there's already an added question, fade it out first
+      if (addedQuestionIdx !== null && addedQuestionIdx !== idx) {
+        setAddedQuestionIdx(null);
+        // Small delay before showing new one
+        setTimeout(() => {
+          setAddedQuestionIdx(idx);
+          onGapClick?.({ ...selectedGap, question });
+        }, 150);
+      } else {
+        setAddedQuestionIdx(idx);
+        onGapClick?.({ ...selectedGap, question });
+      }
     }
-  }, [selectedGap, onGapClick]);
+  }, [selectedGap, onGapClick, addedQuestionIdx]);
 
   // Close when clicking outside
   const handleContainerClick = useCallback(() => {
@@ -339,12 +354,14 @@ const KnowledgeGlobe = forwardRef(function KnowledgeGlobe(
         })}
       </div>
 
-      {/* Fixed height questions area - maintains layout */}
+      {/* Fixed height questions area - maintains layout, centered to globe */}
       <div
-        className="w-full px-2"
         style={{
-          minHeight: '140px',
-          marginTop: '24px',
+          width: size,
+          minHeight: '160px',
+          marginTop: '32px',
+          paddingLeft: '8px',
+          paddingRight: '8px',
         }}
       >
         {/* Questions panel with fade transition */}
@@ -364,40 +381,39 @@ const KnowledgeGlobe = forwardRef(function KnowledgeGlobe(
                 {displayedGap.topic || displayedGap.field || 'Topic'}
               </span>
 
-              {/* Questions list - left aligned with title, + on right */}
-              <ul className="space-y-1">
+              {/* Questions list - left aligned with title, + icon overflows left */}
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
                 {(displayedGap.questions || [displayedGap.question]).map((question, idx) => (
                   <li
                     key={idx}
-                    className="flex items-center justify-between group py-2 px-0 rounded-lg transition-colors cursor-pointer"
+                    className="flex items-start cursor-pointer"
                     style={{
-                      backgroundColor: hoveredQuestionIdx === idx ? 'rgba(19, 64, 116, 0.03)' : 'transparent',
+                      padding: '4px 0',
+                      position: 'relative',
+                      opacity: addedQuestionIdx === idx ? 0.5 : 1,
+                      transition: 'opacity 0.15s ease-in-out',
                     }}
                     onMouseEnter={() => setHoveredQuestionIdx(idx)}
                     onMouseLeave={() => setHoveredQuestionIdx(null)}
-                    onClick={() => handleAddQuestion(question)}
+                    onClick={() => handleAddQuestion(question, idx)}
                   >
-                    <span
-                      className="font-body flex-1"
-                      style={{
-                        fontSize: '14px',
-                        lineHeight: 1.5,
-                        color: '#1a1a1a',
-                      }}
-                    >
-                      {question}
-                    </span>
-                    {/* + button on right - visible on hover */}
+                    {/* + button on left - overflows into margin, fades in on hover */}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleAddQuestion(question);
+                        handleAddQuestion(question, idx);
                       }}
-                      className="shrink-0 w-6 h-6 flex items-center justify-center rounded ml-3 transition-all"
+                      className="shrink-0 w-5 h-5 flex items-center justify-center transition-opacity duration-150"
                       style={{
-                        backgroundColor: hoveredQuestionIdx === idx ? 'rgba(19, 64, 116, 0.1)' : 'transparent',
                         color: '#134074',
                         opacity: hoveredQuestionIdx === idx ? 1 : 0,
+                        background: 'transparent',
+                        border: 'none',
+                        padding: 0,
+                        position: 'absolute',
+                        left: '-20px',
+                        top: '4px',
+                        cursor: 'pointer',
                       }}
                       title="Add to conversation"
                     >
@@ -405,22 +421,33 @@ const KnowledgeGlobe = forwardRef(function KnowledgeGlobe(
                         <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
                       </svg>
                     </button>
+                    <span
+                      className="font-body flex-1"
+                      style={{
+                        fontSize: '14px',
+                        lineHeight: 1.4,
+                        color: '#1a1a1a',
+                      }}
+                    >
+                      {question}
+                    </span>
                   </li>
                 ))}
               </ul>
             </div>
           ) : (
             /* Default hint text */
-            <p
+            <div
               className="font-body text-center"
               style={{
                 fontSize: '13px',
-                color: '#8DA9C4',
+                color: '#134074',
                 paddingTop: '20px',
               }}
             >
-              Hover for topic gaps, click for questions
-            </p>
+              <div>Hover for topic gaps</div>
+              <div>Click for questions</div>
+            </div>
           )}
         </div>
       </div>

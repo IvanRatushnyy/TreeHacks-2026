@@ -226,6 +226,7 @@ export default function App() {
    * ============================ */
   const [conversationEntries, setConversationEntries] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [pendingQuestion, setPendingQuestion] = useState(null); // { text, time } - question awaiting answer
 
   // Handler for voice transcription entries
   const handleAddUserEntry = useCallback((entry) => {
@@ -314,18 +315,14 @@ export default function App() {
     }
   }, [knowledgeGaps.length, globeVisible]);
 
-  // Handle gap click - scroll to relevant question in transcript
+  // Handle gap click - set pending question (can be changed until user answers)
   const handleGapClick = useCallback((gap) => {
     console.log('[App] Gap clicked:', gap);
-    // Add the question to conversation as AI entry
-    const aiEntry = {
-      id: Date.now(),
-      time: formatTime(),
+    // Set as pending question - will fade in/out if changed
+    setPendingQuestion({
       text: gap.question,
-      speaker: 'ai',
-      isInterim: false,
-    };
-    setConversationEntries((prev) => [...prev, aiEntry]);
+      time: formatTime(),
+    });
   }, []);
 
   // Fill a gap (called when AI recognizes an answer)
@@ -709,6 +706,20 @@ export default function App() {
   const handleSendMessage = useCallback(async (message) => {
     if (!message.trim()) return;
 
+    // If there's a pending question, commit it first
+    if (pendingQuestion) {
+      const questionEntry = {
+        id: Date.now() - 1,
+        time: pendingQuestion.time,
+        text: pendingQuestion.text,
+        speaker: 'ai',
+        isQuestion: true,
+        isInterim: false,
+      };
+      setConversationEntries((prev) => [...prev, questionEntry]);
+      setPendingQuestion(null);
+    }
+
     // Add user message to conversation
     const userEntry = {
       id: Date.now(),
@@ -798,7 +809,7 @@ export default function App() {
     } finally {
       setIsProcessing(false);
     }
-  }, [conversationEntries, fileContent, knowledgeGaps, fillGap]);
+  }, [conversationEntries, fileContent, knowledgeGaps, fillGap, pendingQuestion]);
 
   /* Cleanup on unmount */
   useEffect(() => {
@@ -885,29 +896,6 @@ export default function App() {
 
             {/* Right side buttons */}
             <div className="flex items-center gap-2">
-              {/* Questions Panel button */}
-              <button
-                onClick={() => setQuestionPanelVisible(true)}
-                disabled={knowledgeGaps.length === 0}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-display transition-all"
-                style={{
-                  backgroundColor: knowledgeGaps.length > 0 ? 'rgba(141, 169, 196, 0.15)' : 'rgba(141, 169, 196, 0.05)',
-                  border: '1px solid rgba(141, 169, 196, 0.3)',
-                  color: knowledgeGaps.length > 0 ? '#5A7A9A' : '#B0C4D8',
-                  opacity: knowledgeGaps.length > 0 ? 1 : 0.5,
-                }}
-                title="View Questions"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/>
-                </svg>
-                {knowledgeGaps.filter(g => !g.filled).length > 0 && (
-                  <span className="bg-red-500 text-white text-xs px-1.5 rounded-full">
-                    {knowledgeGaps.filter(g => !g.filled).length}
-                  </span>
-                )}
-              </button>
-
               {/* Literature Search button */}
               <button
                 onClick={() => handleOpenLiterature()}
@@ -924,47 +912,23 @@ export default function App() {
                 </svg>
               </button>
 
-              {/* Pause/Resume button (only when recording) */}
-              {isRecording && (
-                <button
-                  onClick={handleTogglePause}
-                  className="flex items-center justify-center w-10 h-10 rounded-lg transition-all"
-                  style={{
-                    backgroundColor: isPaused ? 'rgba(34, 197, 94, 0.15)' : 'rgba(251, 191, 36, 0.15)',
-                    border: `1px solid ${isPaused ? 'rgba(34, 197, 94, 0.3)' : 'rgba(251, 191, 36, 0.3)'}`,
-                    color: isPaused ? '#15803D' : '#D97706',
-                  }}
-                  title={isPaused ? 'Resume Recording' : 'Pause Recording'}
-                >
-                  {isPaused ? (
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M8 5v14l11-7z"/>
-                    </svg>
-                  ) : (
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
-                    </svg>
-                  )}
-                </button>
-              )}
-
               {/* Mute button */}
               <button
                 onClick={() => setIsMuted(!isMuted)}
-                className="flex items-center justify-center w-10 h-10 rounded-lg transition-all"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-display transition-all"
                 style={{
-                  backgroundColor: isMuted ? 'rgba(239, 68, 68, 0.1)' : 'rgba(141, 169, 196, 0.1)',
+                  backgroundColor: isMuted ? 'rgba(239, 68, 68, 0.1)' : 'rgba(141, 169, 196, 0.15)',
                   border: `1px solid ${isMuted ? 'rgba(239, 68, 68, 0.3)' : 'rgba(141, 169, 196, 0.3)'}`,
                   color: isMuted ? '#EF4444' : '#5A7A9A',
                 }}
                 title={isMuted ? 'Unmute' : 'Mute'}
               >
                 {isMuted ? (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
                   </svg>
                 ) : (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
                   </svg>
                 )}
@@ -972,13 +936,18 @@ export default function App() {
             </div>
           </div>
 
-          {/* Hexagon container - positioned near top */}
+          {/* Hexagon container - always absolute for smooth transition */}
           <div
             className="flex flex-col items-center"
             style={{
-              transition: 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
-              transform: globeVisible ? 'translateY(0) scale(0.45)' : 'translateY(0) scale(1)',
-              marginTop: '20px',
+              position: 'absolute',
+              top: globeVisible ? `calc(70px + ${isDemoMode ? '10px' : '0px'})` : '50%',
+              left: '50%',
+              transform: globeVisible 
+                ? 'translate(-50%, 0) scale(0.75)' 
+                : 'translate(-50%, -50%) scale(1)',
+              transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+              zIndex: 20,
             }}
           >
             <HexiCore
@@ -989,11 +958,11 @@ export default function App() {
             />
           </div>
 
-          {/* Knowledge Globe - positioned in center-lower area with space for questions */}
+          {/* Knowledge Globe - bottom aligned */}
           <div
-            className="absolute flex items-start justify-center"
+            className="absolute flex items-end justify-center"
             style={{
-              top: '35%',
+              bottom: '60px',
               left: '50%',
               transform: 'translateX(-50%)',
               opacity: globeVisible ? 1 : 0,
@@ -1037,6 +1006,7 @@ export default function App() {
               isRecording={isRecording}
               suggestions={suggestions}
               onSuggestionClick={handleGapClick}
+              pendingQuestion={pendingQuestion}
             />
           </div>
 

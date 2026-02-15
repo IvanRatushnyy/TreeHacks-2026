@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /**
  * TranscriptionStream — displays conversation entries with timestamps
@@ -9,6 +9,8 @@ import { useEffect, useRef } from 'react';
  *  - isRecording (bool)   : whether currently recording
  *  - suggestions (array)  : AI suggestions for missing info
  *  - onSuggestionClick (fn): callback when suggestion is clicked to add to chat
+ *  - pendingQuestion (object): { text, time } - the currently pending question awaiting answer
+ *  - onQuestionChange (fn): callback to change the pending question (fade transition)
  */
 export default function TranscriptionStream({ 
   entries = [], 
@@ -16,14 +18,59 @@ export default function TranscriptionStream({
   isRecording = false,
   suggestions = [],
   onSuggestionClick,
+  pendingQuestion = null,
+  onQuestionChange,
 }) {
   const bottomRef = useRef(null);
   const scrollContainerRef = useRef(null);
+  const [animatedEntryIds, setAnimatedEntryIds] = useState(new Set());
+  const prevEntriesLengthRef = useRef(entries.length);
+  const [questionFadeState, setQuestionFadeState] = useState('visible'); // 'visible', 'fading-out', 'fading-in'
+  const [displayedQuestion, setDisplayedQuestion] = useState(null);
+
+  // Track newly added entries for animation
+  useEffect(() => {
+    if (entries.length > prevEntriesLengthRef.current) {
+      // New entry was added
+      const newEntries = entries.slice(prevEntriesLengthRef.current);
+      const newIds = new Set(animatedEntryIds);
+      newEntries.forEach(entry => newIds.add(entry.id));
+      setAnimatedEntryIds(newIds);
+    }
+    prevEntriesLengthRef.current = entries.length;
+  }, [entries]);
+
+  // Handle fade transitions for pending question
+  useEffect(() => {
+    if (pendingQuestion && displayedQuestion && pendingQuestion.text !== displayedQuestion.text) {
+      // Different question - fade out then in
+      setQuestionFadeState('fading-out');
+      const timer = setTimeout(() => {
+        setDisplayedQuestion(pendingQuestion);
+        setQuestionFadeState('fading-in');
+        setTimeout(() => setQuestionFadeState('visible'), 50);
+      }, 200);
+      return () => clearTimeout(timer);
+    } else if (pendingQuestion && !displayedQuestion) {
+      // New question from none - fade in
+      setDisplayedQuestion(pendingQuestion);
+      setQuestionFadeState('fading-in');
+      setTimeout(() => setQuestionFadeState('visible'), 50);
+    } else if (!pendingQuestion && displayedQuestion) {
+      // Question cleared - fade out
+      setQuestionFadeState('fading-out');
+      const timer = setTimeout(() => {
+        setDisplayedQuestion(null);
+        setQuestionFadeState('visible');
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [pendingQuestion, displayedQuestion]);
 
   // Auto-scroll to bottom when new entries arrive
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [entries, interimText]);
+  }, [entries, interimText, displayedQuestion]);
 
   const hasContent = entries.length > 0 || interimText;
 
@@ -179,11 +226,12 @@ export default function TranscriptionStream({
           const showTimestamp = shouldShowTimestamp(entry, index);
           const isQuestion = entry.isQuestion;
           const isLiterature = entry.isLiterature;
+          const shouldAnimate = animatedEntryIds.has(entry.id);
           
           return (
             <div
               key={entry.id}
-              className="flex flex-col"
+              className={`flex flex-col ${shouldAnimate ? 'chat-entry-fade-in' : ''}`}
               style={{ 
                 gap: '6px',
               }}
@@ -217,30 +265,19 @@ export default function TranscriptionStream({
 
               {/* Question Card styling */}
               {isQuestion ? (
-                <div
-                  className="rounded-lg p-3"
+                <p
+                  className="font-body leading-relaxed"
                   style={{
-                    backgroundColor: 'rgba(245, 158, 11, 0.08)',
-                    border: '1px solid rgba(245, 158, 11, 0.2)',
+                    fontSize: 'clamp(12px, 1.7vw, 24px)',
+                    lineHeight: '1.35',
+                    color: '#D97706',
+                    whiteSpace: 'pre-wrap',
+                    margin: '0',
+                    padding: '0',
                   }}
                 >
-                  <div className="flex items-start gap-3">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="#F59E0B" className="shrink-0 mt-0.5">
-                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/>
-                    </svg>
-                    <p
-                      className="font-body leading-relaxed"
-                      style={{
-                        fontSize: 'clamp(13px, 1.6vw, 20px)',
-                        lineHeight: '1.4',
-                        color: '#92400E',
-                        fontWeight: 500,
-                      }}
-                    >
-                      {entry.text.trim()}
-                    </p>
-                  </div>
-                </div>
+                  {entry.text.trim()}
+                </p>
               ) : isLiterature ? (
                 /* Literature Card styling */
                 <div
@@ -369,29 +406,50 @@ export default function TranscriptionStream({
               border: '1px solid rgba(19, 64, 116, 0.1)',
             }}
           >
-            <p
-              className="font-display font-bold uppercase mb-2"
+            <span
+              className="font-display"
               style={{
-                fontSize: '11px',
-                color: 'var(--text-label)',
-                letterSpacing: '0.5px',
+                fontSize: '12px',
+                lineHeight: '16px',
+                color: '#133f72',
               }}
             >
               Suggested Questions
-            </p>
-            <ul className="space-y-2">
+            </span>
+            <ul style={{ marginTop: '8px' }}>
               {suggestions.map((sug, idx) => (
                 <li
                   key={idx}
-                  className="flex items-start gap-2 group"
+                  className="flex items-center cursor-pointer transition-colors hover:bg-[rgba(19,64,116,0.05)] rounded"
+                  style={{
+                    padding: '6px 4px',
+                    gap: '8px',
+                  }}
+                  onClick={() => onSuggestionClick?.(sug)}
                 >
-                  {/* Add button */}
-                  <button
-                    onClick={() => onSuggestionClick?.(sug)}
-                    className="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-all mt-0.5"
+                  <span
+                    className="font-body flex-1"
                     style={{
-                      backgroundColor: 'rgba(19, 64, 116, 0.1)',
+                      fontSize: 'clamp(12px, 1.7vw, 20px)',
+                      lineHeight: '1.35',
+                      color: '#1a1a1a',
+                    }}
+                  >
+                    {sug.question}
+                  </span>
+                  {/* + button on right - fades in on hover */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSuggestionClick?.(sug);
+                    }}
+                    className="shrink-0 w-5 h-5 flex items-center justify-center transition-opacity duration-150 opacity-0 group-hover:opacity-100"
+                    style={{
                       color: '#134074',
+                      background: 'transparent',
+                      border: 'none',
+                      padding: 0,
+                      opacity: 0.4,
                     }}
                     title="Add to conversation"
                   >
@@ -399,19 +457,55 @@ export default function TranscriptionStream({
                       <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
                     </svg>
                   </button>
-                  <span
-                    className="font-body flex-1 cursor-pointer hover:text-[#134074] transition-colors"
-                    style={{
-                      fontSize: '14px',
-                      color: 'var(--text-body-dark)',
-                    }}
-                    onClick={() => onSuggestionClick?.(sug)}
-                  >
-                    {sug.question}
-                  </span>
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {/* Pending question - shown below suggestions with fade animation */}
+        {displayedQuestion && (
+          <div style={{ marginTop: '12px' }}>
+            <div className="flex flex-col" style={{ gap: '6px' }}>
+              {/* Timestamp with speaker indicator */}
+              <div className="flex items-center" style={{ gap: '8px' }}>
+                <span
+                  className="rounded-full shrink-0"
+                  style={{
+                    width: '6px',
+                    height: '6px',
+                    backgroundColor: '#F59E0B',
+                  }}
+                />
+                <span
+                  className="font-display"
+                  style={{
+                    fontSize: '12px',
+                    lineHeight: '16px',
+                    color: '#133f72',
+                  }}
+                >
+                  {displayedQuestion.time} • Question
+                </span>
+              </div>
+
+              {/* Question text with fade animation - yellow text like Hexi responses */}
+              <p
+                className="font-body leading-relaxed"
+                style={{
+                  fontSize: 'clamp(12px, 1.7vw, 24px)',
+                  lineHeight: '1.35',
+                  color: '#D97706',
+                  whiteSpace: 'pre-wrap',
+                  margin: '0',
+                  padding: '0',
+                  opacity: questionFadeState === 'fading-out' ? 0 : questionFadeState === 'fading-in' ? 0 : 1,
+                  transition: 'opacity 0.2s ease-in-out',
+                }}
+              >
+                {displayedQuestion.text}
+              </p>
+            </div>
           </div>
         )}
 
