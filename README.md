@@ -13,10 +13,17 @@ Project initialized on February 13, 2026.
     -  `infer.py` An inference script that loads the model and the adapter and runs the model on the prompt, logging the output. Used to test various experimental models.
         - *Usage:* `uv run infer.py "censor: hello my name is Jane Doe and my phone is 415-555-1234"`
     - `merge_lora.py` Merges the LORA adapter onto the model itself and exports it to a file.
-        - *Usage:*
+        - *Usage:*  `uv run merge_lora.py --lora ./lfm2-350m-lora --out ./lfm2-350m-merged`
 
 ## AI Format
-The AI format is really simple.
+The AI format is really simple. The format looks roughly like this:
+```
+### Instruction:\n{text}\n\n### Response:\n
+```
+Although for censoring we do the following format:
+```
+### Instruction:\ncensor: {text}\n\n### Response:\n
+```
 
 ## Running the frontend
 The front-end is written in React. It is a single page application and can be run with the following shell script:
