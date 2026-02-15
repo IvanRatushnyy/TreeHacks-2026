@@ -153,6 +153,22 @@ CLINICAL CORRELATION RECOMMENDED for treatment planning.`,
   ],
 };
 
+// Monotonic timestamp generator - ensures entries always have unique, sequential timestamps
+let lastTimestamp = 0;
+let timestampCounter = 0;
+
+function getMonotonicTimestamp() {
+  const now = Date.now();
+  if (now === lastTimestamp) {
+    timestampCounter++;
+  } else {
+    lastTimestamp = now;
+    timestampCounter = 0;
+  }
+  // Return a sortable number: timestamp * 1000 + counter (allows 1000 entries per millisecond)
+  return now * 1000 + timestampCounter;
+}
+
 function formatTime() {
   const d = new Date();
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -226,12 +242,57 @@ export default function App() {
    * ============================ */
   const [conversationEntries, setConversationEntries] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [pendingQuestion, setPendingQuestion] = useState(null); // { text, time } - question awaiting answer
+  const [pendingQuestion, setPendingQuestion] = useState(null); // { text, time, sortKey } - question awaiting answer
+  const [questionLocked, setQuestionLocked] = useState(false); // true when user starts input - prevents question change
+
+  // Helper to add entry with proper sort key
+  const addConversationEntry = useCallback((entry) => {
+    const entryWithSort = {
+      ...entry,
+      sortKey: entry.sortKey ?? getMonotonicTimestamp(),
+    };
+    setConversationEntries((prev) => {
+      const updated = [...prev, entryWithSort];
+      // Always keep entries sorted by sortKey
+      return updated.sort((a, b) => a.sortKey - b.sortKey);
+    });
+    return entryWithSort;
+  }, []);
+
+  // Lock and commit the pending question to entries immediately
+  // This ensures the question appears in correct DOM order before any transcription
+  const lockAndCommitQuestion = useCallback(() => {
+    if (pendingQuestion && !questionLocked) {
+      setQuestionLocked(true);
+      // Commit immediately to entries so it's in correct position
+      addConversationEntry({
+        id: `question-${pendingQuestion.sortKey}`,
+        sortKey: pendingQuestion.sortKey,
+        time: pendingQuestion.time,
+        text: pendingQuestion.text,
+        speaker: 'ai',
+        isQuestion: true,
+        isInterim: false,
+      });
+      setPendingQuestion(null);
+    }
+  }, [pendingQuestion, questionLocked, addConversationEntry]);
 
   // Handler for voice transcription entries
   const handleAddUserEntry = useCallback((entry) => {
-    const entryWithMeta = { ...entry, speaker: 'user', sensitiveSpans: [], piiProcessing: true };
-    setConversationEntries((prev) => [...prev, entryWithMeta]);
+    // Question should already be committed when recording started
+    // Just add the user entry
+    const entryWithMeta = {
+      ...entry,
+      id: entry.id ?? `user-${getMonotonicTimestamp()}`,
+      sortKey: getMonotonicTimestamp(),
+      speaker: 'user',
+      sensitiveSpans: [],
+      piiProcessing: true,
+    };
+    addConversationEntry(entryWithMeta);
+    // Reset lock state after user entry is added
+    setQuestionLocked(false);
 
     getSensitiveSpans(entryWithMeta.text)
       .then((spans) => {
@@ -247,7 +308,7 @@ export default function App() {
           prev.map((e) => (e.id === entryWithMeta.id ? { ...e, piiProcessing: false } : e))
         );
       });
-  }, []);
+  }, [addConversationEntry]);
 
   /* ============================
    *  Voice session hook
@@ -318,12 +379,15 @@ export default function App() {
   // Handle gap click - set pending question (can be changed until user answers)
   const handleGapClick = useCallback((gap) => {
     console.log('[App] Gap clicked:', gap);
-    // Set as pending question - will fade in/out if changed
-    setPendingQuestion({
-      text: gap.question,
-      time: formatTime(),
-    });
-  }, []);
+    // Only allow changing question if not locked
+    if (!questionLocked) {
+      setPendingQuestion({
+        text: gap.question,
+        time: formatTime(),
+        sortKey: getMonotonicTimestamp(), // Assign sort position when question is selected
+      });
+    }
+  }, [questionLocked]);
 
   // Fill a gap (called when AI recognizes an answer)
   const fillGap = useCallback((gapId) => {
@@ -426,15 +490,14 @@ export default function App() {
     setKnowledgeGaps(demoGaps);
     
     // Add AI message about gaps
-    const aiEntry = {
-      id: Date.now(),
+    addConversationEntry({
+      id: `ai-demo-${getMonotonicTimestamp()}`,
       time: formatTime(),
       text: "Let me help gather some information. I've highlighted key questions we need to address - you can see them on the globe below.",
       speaker: 'ai',
       isInterim: false,
-    };
-    setConversationEntries((prev) => [...prev, aiEntry]);
-  }, []);
+    });
+  }, [addConversationEntry]);
 
   // Detect knowledge gaps using the API
   const analyzeKnowledgeGaps = useCallback(async () => {
@@ -473,31 +536,29 @@ export default function App() {
         setKnowledgeGaps(transformedGaps);
         
         // Add AI message about gaps
-        const aiEntry = {
-          id: Date.now(),
+        addConversationEntry({
+          id: `ai-gaps-${getMonotonicTimestamp()}`,
           time: formatTime(),
           text: result.next_question || "I've identified some information we still need. The markers on the globe show what's missing.",
           speaker: 'ai',
           isInterim: false,
-        };
-        setConversationEntries((prev) => [...prev, aiEntry]);
+        });
       } else if (result.complete) {
         // All gaps filled!
-        const aiEntry = {
-          id: Date.now(),
+        addConversationEntry({
+          id: `ai-complete-${getMonotonicTimestamp()}`,
           time: formatTime(),
           text: "Great! We have all the information we need. Is there anything else you'd like to add?",
           speaker: 'ai',
           isInterim: false,
-        };
-        setConversationEntries((prev) => [...prev, aiEntry]);
+        });
       }
     } catch (err) {
       console.error('[App] Failed to analyze knowledge gaps:', err);
       // Fall back to demo data if API fails
       demoGlobe();
     }
-  }, [conversationEntries, demoGlobe, formatTopicName]);
+  }, [conversationEntries, demoGlobe, formatTopicName, addConversationEntry]);
 
   // Load Margaret Chen demo case (for TreeHacks demo)
   const loadDemoCase = useCallback(() => {
@@ -516,15 +577,16 @@ export default function App() {
     // Load pre-cached knowledge gaps
     setKnowledgeGaps(DEMO_CASE.knowledgeGaps);
     
-    // Add initial AI message
-    const aiEntry = {
-      id: Date.now(),
+    // Add initial AI message (reset entries first)
+    const initialEntry = {
+      id: `ai-demo-init-${getMonotonicTimestamp()}`,
+      sortKey: getMonotonicTimestamp(),
       time: formatTime(),
       text: `I've loaded the pathology report for ${DEMO_CASE.patient.name}, age ${DEMO_CASE.patient.age}. The diagnosis is Diffuse Large B-Cell Lymphoma, GCB subtype. I've identified ${DEMO_CASE.knowledgeGaps.length} key questions we need to address before treatment planning. You can click on any marker on the globe or use the Questions panel to see what information we still need.`,
       speaker: 'ai',
       isInterim: false,
     };
-    setConversationEntries([aiEntry]);
+    setConversationEntries([initialEntry]);
   }, []);
 
   // Handle marking a question as answered
@@ -555,17 +617,16 @@ export default function App() {
 
   // Handle adding literature finding to discussion
   const handleAddLiteratureToDiscussion = useCallback((result) => {
-    const aiEntry = {
-      id: Date.now(),
+    addConversationEntry({
+      id: `ai-lit-${getMonotonicTimestamp()}`,
       time: formatTime(),
       text: `📚 **Research Finding**: ${result.title}\n\n${result.keyFindings?.join('\n• ') || result.abstract}\n\n_Source: ${result.journal} (${result.year}) - DOI: ${result.doi}_`,
       speaker: 'ai',
       isInterim: false,
       isLiterature: true,
-    };
-    setConversationEntries((prev) => [...prev, aiEntry]);
+    });
     setLiteraturePanelVisible(false);
-  }, []);
+  }, [addConversationEntry]);
 
   // Demo function to fill a random gap (for testing)
   const demoFillGap = useCallback(() => {
@@ -575,16 +636,15 @@ export default function App() {
       fillGap(randomGap.id);
       
       // Add user response
-      const userEntry = {
-        id: Date.now(),
+      addConversationEntry({
+        id: `user-demo-${getMonotonicTimestamp()}`,
         time: formatTime(),
         text: `Regarding "${randomGap.question}" - I've provided the information.`,
         speaker: 'user',
         isInterim: false,
-      };
-      setConversationEntries((prev) => [...prev, userEntry]);
+      });
     }
-  }, [knowledgeGaps, fillGap]);
+  }, [knowledgeGaps, fillGap, addConversationEntry]);
 
   const isTogglingRef = useRef(false);
 
@@ -629,11 +689,15 @@ export default function App() {
       analyserRef.current = analyser;
 
       startAudioLoop();
+      // Lock and commit pending question immediately so it appears before transcription
+      if (pendingQuestion) {
+        lockAndCommitQuestion();
+      }
       startRecording();
     } catch (err) {
       console.error('Microphone access denied or unavailable:', err);
     }
-  }, [startAudioLoop, startRecording]);
+  }, [startAudioLoop, startRecording, pendingQuestion, lockAndCommitQuestion]);
 
   /* ---------- Stop listening ---------- */
   const stopListeningWithAudio = useCallback(() => {
@@ -652,6 +716,8 @@ export default function App() {
     analyserRef.current = null;
     setAudioLevel(0);
     stopRecording();
+    // Unlock question when recording stops so new questions can be selected
+    setQuestionLocked(false);
   }, [stopRecording]);
 
   /* ---------- Toggle handler ---------- */
@@ -689,48 +755,47 @@ export default function App() {
     }
     
     // Add the question to conversation as AI entry
-    const aiEntry = {
-      id: Date.now(),
+    addConversationEntry({
+      id: `question-gap-${getMonotonicTimestamp()}`,
       time: formatTime(),
       text: gap.question,
       speaker: 'ai',
       isInterim: false,
       isQuestion: true,
       gapId: gap.id,
-    };
-    setConversationEntries((prev) => [...prev, aiEntry]);
+    });
     setQuestionPanelVisible(false);
-  }, [isRecording, isPaused, stopListeningWithAudio]);
+  }, [isRecording, isPaused, stopListeningWithAudio, addConversationEntry]);
+
+  // Handler for when user starts typing in input area
+  const handleInputStart = useCallback(() => {
+    if (pendingQuestion && !questionLocked) {
+      lockAndCommitQuestion();
+    }
+  }, [pendingQuestion, questionLocked, lockAndCommitQuestion]);
 
   /* ---------- Send message handler ---------- */
   const handleSendMessage = useCallback(async (message) => {
     if (!message.trim()) return;
 
-    // If there's a pending question, commit it first
+    // If there's a pending question that wasn't committed yet, commit it now
     if (pendingQuestion) {
-      const questionEntry = {
-        id: Date.now() - 1,
-        time: pendingQuestion.time,
-        text: pendingQuestion.text,
-        speaker: 'ai',
-        isQuestion: true,
-        isInterim: false,
-      };
-      setConversationEntries((prev) => [...prev, questionEntry]);
-      setPendingQuestion(null);
+      lockAndCommitQuestion();
     }
+    // Reset lock state
+    setQuestionLocked(false);
 
     // Add user message to conversation
-    const userEntry = {
-      id: Date.now(),
+    const userEntryId = `user-msg-${getMonotonicTimestamp()}`;
+    const userEntry = addConversationEntry({
+      id: userEntryId,
       time: formatTime(),
       text: message,
       speaker: 'user',
       isInterim: false,
       sensitiveSpans: [],
       piiProcessing: true,
-    };
-    setConversationEntries((prev) => [...prev, userEntry]);
+    });
 
     getSensitiveSpans(userEntry.text)
       .then((spans) => {
@@ -775,14 +840,13 @@ export default function App() {
           response.remaining_gaps?.length ? `Remaining gaps: ${response.remaining_gaps.join('; ')}` : ''
         ].filter(Boolean).join('\n\n');
 
-        const aiEntry = {
-          id: Date.now() + 1,
+        addConversationEntry({
+          id: `ai-response-${getMonotonicTimestamp()}`,
           time: formatTime(),
           text: aiText,
           speaker: 'ai',
           isInterim: false,
-        };
-        setConversationEntries((prev) => [...prev, aiEntry]);
+        });
 
         // Extract remaining gaps and add to globe if not already present
         if (response.remaining_gaps?.length > 0 && knowledgeGaps.length === 0) {
@@ -809,7 +873,7 @@ export default function App() {
     } finally {
       setIsProcessing(false);
     }
-  }, [conversationEntries, fileContent, knowledgeGaps, fillGap, pendingQuestion]);
+  }, [conversationEntries, fileContent, knowledgeGaps, fillGap, pendingQuestion, addConversationEntry, lockAndCommitQuestion]);
 
   /* Cleanup on unmount */
   useEffect(() => {
@@ -820,21 +884,6 @@ export default function App() {
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-white">
-      <div
-        className="fixed top-4 right-4 z-50 rounded-full"
-        style={{
-          width: '12px',
-          height: '12px',
-          backgroundColor: redactorStatus.ready
-            ? '#22c55e'
-            : redactorStatus.phase === 'loading'
-              ? '#eab308'
-              : '#94a3b8',
-          boxShadow: '0 0 0 2px rgba(255,255,255,0.9), 0 0 0 3px rgba(15,23,42,0.2)',
-          opacity: redactorStatus.phase === 'loading' ? 0.8 : 1,
-        }}
-        title={redactorStatus.error || redactorStatus.message}
-      />
       {/* ===== MAIN CONTENT ===== */}
       <main
         className="flex flex-1 min-h-0 overflow-hidden"
@@ -1007,6 +1056,7 @@ export default function App() {
               suggestions={suggestions}
               onSuggestionClick={handleGapClick}
               pendingQuestion={pendingQuestion}
+              questionLocked={questionLocked}
             />
           </div>
 
@@ -1017,6 +1067,7 @@ export default function App() {
             onFileUpload={handleFileUpload}
             onFileRemove={handleFileRemove}
             onSendMessage={handleSendMessage}
+            onInputStart={handleInputStart}
             isProcessing={isProcessing}
           />
         </section>
@@ -1158,6 +1209,7 @@ export default function App() {
             onFileUpload={handleFileUpload}
             onFileRemove={handleFileRemove}
             onSendMessage={handleSendMessage}
+            onInputStart={handleInputStart}
             isProcessing={isProcessing}
           />
         </section>

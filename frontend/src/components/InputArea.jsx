@@ -13,6 +13,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
  *  - onFileUpload   (func)   : callback when file is uploaded (file, content)
  *  - onFileRemove   (func)   : callback when file is removed
  *  - onSendMessage  (func)   : callback when message is sent
+ *  - onInputStart   (func)   : callback when user starts typing (locks pending question)
  *  - isProcessing   (bool)   : whether AI is processing
  */
 export default function InputArea({ 
@@ -21,12 +22,32 @@ export default function InputArea({
   onFileUpload,
   onFileRemove,
   onSendMessage,
+  onInputStart,
   isProcessing = false,
 }) {
   const [value, setValue] = useState('');
   const [showFilePill, setShowFilePill] = useState(false);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
+  const hasTriggeredInputStart = useRef(false);
+
+  // Reset input start trigger when value is cleared (after sending)
+  useEffect(() => {
+    if (value === '') {
+      hasTriggeredInputStart.current = false;
+    }
+  }, [value]);
+
+  // Handle text change - trigger onInputStart on first character
+  const handleChange = (e) => {
+    const newValue = e.target.value;
+    // Trigger onInputStart only on first character typed
+    if (!hasTriggeredInputStart.current && newValue.length > 0 && value.length === 0) {
+      hasTriggeredInputStart.current = true;
+      onInputStart?.();
+    }
+    setValue(newValue);
+  };
 
   // Fade in file pill when file is uploaded
   useEffect(() => {
@@ -148,7 +169,7 @@ export default function InputArea({
           }}
           placeholder={placeholder}
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={handleChange}
           onKeyDown={handleKeyDown}
           disabled={isProcessing}
         />

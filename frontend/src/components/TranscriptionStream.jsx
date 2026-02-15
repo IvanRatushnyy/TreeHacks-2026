@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from 'react';
  *  - suggestions (array)  : AI suggestions for missing info
  *  - onSuggestionClick (fn): callback when suggestion is clicked to add to chat
  *  - pendingQuestion (object): { text, time } - the currently pending question awaiting answer
+ *  - questionLocked (bool): whether the pending question is locked (user started input)
  *  - onQuestionChange (fn): callback to change the pending question (fade transition)
  */
 export default function TranscriptionStream({ 
@@ -19,6 +20,7 @@ export default function TranscriptionStream({
   suggestions = [],
   onSuggestionClick,
   pendingQuestion = null,
+  questionLocked = false,
   onQuestionChange,
 }) {
   const bottomRef = useRef(null);
@@ -40,8 +42,17 @@ export default function TranscriptionStream({
     prevEntriesLengthRef.current = entries.length;
   }, [entries]);
 
-  // Handle fade transitions for pending question
+  // Handle fade transitions for pending question (skip transitions if locked - it stays static)
   useEffect(() => {
+    // If question is locked, keep displayedQuestion in sync but don't animate
+    if (questionLocked) {
+      if (pendingQuestion && (!displayedQuestion || displayedQuestion.text !== pendingQuestion.text)) {
+        setDisplayedQuestion(pendingQuestion);
+        setQuestionFadeState('visible');
+      }
+      return;
+    }
+
     if (pendingQuestion && displayedQuestion && pendingQuestion.text !== displayedQuestion.text) {
       // Different question - fade out then in
       setQuestionFadeState('fading-out');
@@ -57,7 +68,7 @@ export default function TranscriptionStream({
       setQuestionFadeState('fading-in');
       setTimeout(() => setQuestionFadeState('visible'), 50);
     } else if (!pendingQuestion && displayedQuestion) {
-      // Question cleared - fade out
+      // Question cleared (committed to entries) - fade out
       setQuestionFadeState('fading-out');
       const timer = setTimeout(() => {
         setDisplayedQuestion(null);
@@ -65,7 +76,7 @@ export default function TranscriptionStream({
       }, 200);
       return () => clearTimeout(timer);
     }
-  }, [pendingQuestion, displayedQuestion]);
+  }, [pendingQuestion, displayedQuestion, questionLocked]);
 
   // Auto-scroll to bottom when new entries arrive
   useEffect(() => {
@@ -344,7 +355,7 @@ export default function TranscriptionStream({
           );
         })}
 
-        {/* Interim text (currently being spoken) */}
+        {/* Interim text (currently being spoken) - appears after committed entries */}
         {interimText && (
           <div className="flex flex-col" style={{ gap: '6px', opacity: 0.6 }}>
             <span
@@ -463,8 +474,8 @@ export default function TranscriptionStream({
           </div>
         )}
 
-        {/* Pending question - shown below suggestions with fade animation */}
-        {displayedQuestion && (
+        {/* Pending question - shown below suggestions with fade animation (only when NOT locked) */}
+        {displayedQuestion && !questionLocked && (
           <div style={{ marginTop: '12px' }}>
             <div className="flex flex-col" style={{ gap: '6px' }}>
               {/* Timestamp with speaker indicator */}
@@ -489,7 +500,7 @@ export default function TranscriptionStream({
                 </span>
               </div>
 
-              {/* Question text with fade animation - yellow text like Hexi responses */}
+              {/* Question text with fade animation - yellow text */}
               <p
                 className="font-body leading-relaxed"
                 style={{
