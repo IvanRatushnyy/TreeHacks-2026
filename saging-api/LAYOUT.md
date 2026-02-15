@@ -34,11 +34,11 @@ One thing at a time: do a step → test (e.g. Swagger) → add keys/S3/secrets i
 
 ---
 
-## Step 4 — PII integration
-- [ ] Define how this API talks to the PII model (HTTP to teammate’s service, or local call)
-- [ ] One endpoint: e.g. `POST /api/redact` — body: `{ "text": "..." }`, response: redacted text + spans
-- [ ] Call PII service from FastAPI; handle errors/timeouts
-- [ ] Test in Swagger with sample clinical text
+## Step 4 — PII integration ✅
+- [x] Define how this API talks to the PII model (HTTP to teammate’s service, or local call)
+- [x] One endpoint: `POST /api/redact` — body: `{ "text": "..." }`, response: redacted text + spans
+- [x] Call PII service from FastAPI; handle errors/timeouts (10s); fallback if no URL
+- [x] Test in Swagger with sample clinical text
 
 **Deliverable:** Frontend → Saging API → PII model; redaction works end-to-end.
 
@@ -54,10 +54,10 @@ One thing at a time: do a step → test (e.g. Swagger) → add keys/S3/secrets i
 
 ---
 
-## Step 6 — Voice-to-text (future)
-- [ ] Placeholder endpoint: e.g. `POST /api/transcribe` (returns 501 or mock)
+## Step 6 — Voice-to-text (future) ✅ placeholder
+- [x] Placeholder endpoint: `POST /api/transcribe` (mock; returns transcript message + error until real impl)
 - [ ] When teammate is ready: replace with real call (Whisper API or their service)
-- [ ] Contract: input = audio (or URL), output = transcript + optional segments
+- [x] Contract: input = `audio_base64` or `audio_url`, output = `transcript`, `segments`, `error`
 
 **Deliverable:** Stable API contract; implementation can be stubbed then filled in.
 
@@ -104,7 +104,16 @@ One thing at a time: do a step → test (e.g. Swagger) → add keys/S3/secrets i
 - **Feasibility:** If something from the Google doc is too heavy (e.g. full PQC, full Object Lock), we can do a minimal version and note “BAA-ready” or “demo only.”
 - **Order:** Steps 1–3 are mandatory. 4–5 are core (PII + LLM). 6–10 can be reordered or dropped based on time and teammates.
 
+## Eventually / Backlog
+- [ ] **Final doc to S3:** Generate doc from user input/scanning, standardize format, create PDF, store in S3.
+- [ ] **Doc upload / scan / media → PII → PDF → S3 + DDB:** Upload docs, scanning, or media; send through PII system; receive PDF back in good format; upload PDF to S3; record in DDB with masked patient details. *(See `STEPS.md` for ordered to-dos.)*
+- [ ] **DB with protected data:** Store encounter/session data in a DB; sensitive fields hashed/masked/encrypted so a leak does not expose PHI.
+- [ ] **Source of old patient docs:** Ingest patient documents (from scan/PII pipeline) → standardize into fixed columns/fields → store in DB + S3. Main formatted doc = fixed schema; Zero Trust questionnaire can fill gaps (separate transcript PDF).
+- [ ] **Transcribed + summarized storage:** Store transcribed data (voice/text export) and its summary; **endpoint for summary** so the app can show the summary (e.g. GET /api/summary or GET /api/sessions/{id}/summary).
+
 ---
+
+**To-do list:** See **`STEPS.md`** for the current ordered list of steps (including doc upload, DDB table, etc.) so we don’t forget to come back.
 
 **What do you want to do first?**  
 Reply with the step number (or “Step 1”) and we’ll implement only that, test in Swagger, then move on.

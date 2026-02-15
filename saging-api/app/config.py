@@ -17,8 +17,8 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: str = "*"
 
-    # PII / Voice: integrated in-app on same EC2 (no separate URLs)
-    # pii_service_url / voice_service_url kept optional for overrides only
+    # PII: optional external service (teammate's model). If not set, use in-app fallback.
+    pii_service_url: Optional[str] = None  # e.g. http://localhost:5001
 
     # Clinical validation LLM: Claude first, then OpenAI fallback, then Bedrock
     claude_api_key: Optional[str] = None   # CLAUDE_API_KEY in Secrets Manager
@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     aws_region: str = "us-east-1"
     saging_s3_bucket: Optional[str] = None
     # AWS credentials: use env AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY or IAM role
+
+    # DynamoDB: optional table for logging summary/record pointers (masked patient → S3 file)
+    saging_ddb_table: Optional[str] = None  # e.g. saging-summary-records
 
     # Optional: AWS Secrets Manager (loads JSON into env before this runs)
     use_aws_secrets: bool = False
@@ -59,6 +62,9 @@ class Settings(BaseSettings):
 
     def has_s3(self) -> bool:
         return bool(self.saging_s3_bucket)
+
+    def has_ddb(self) -> bool:
+        return bool(self.saging_ddb_table)
 
 
 # Singleton for import
