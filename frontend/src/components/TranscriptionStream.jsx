@@ -1,62 +1,123 @@
-const chatEntries = [
-  {
-    time: '10:02',
-    text: 'Patient entered room, complaining of mild dizziness upon standing.',
-    opacity: 0.4,
-  },
-  {
-    time: '10:03',
-    text: 'Initial observation indicates pale complexion. No visible tremors.',
-    opacity: 0.4,
-  },
-  {
-    time: '10:04',
-    text: 'Patient reports history of mild tachycardia. Last episode was two months ago.',
-    opacity: 0.6,
-  },
-  {
-    time: '10:05',
-    text: null, // Active highlighted item
-    active: true,
-  },
-  {
-    time: '10:05',
-    text: 'Denies history of smoking. Occasional alcohol consumption (socially).',
-    opacity: 1,
-    timeColor: '#6b7280', // darker timestamp for more recent entry
-  },
-  {
-    time: '...',
-    text: 'Listening for vitals...',
-    isPlaceholder: true,
-  },
-];
+import { useRef, useEffect } from 'react';
 
-function ActiveEntry() {
+function ChatEntry({ entry, isActive }) {
+  const speakerLabel = entry.speaker === 'ai' ? 'AI' : 'Practitioner';
+  const isAi = entry.speaker === 'ai';
   return (
-    <p
-      className="font-body leading-relaxed"
+    <div
+      className="flex items-start"
       style={{
-        color: '#133f72',
-        fontSize: 'clamp(12px, 1.7vw, 24px)',
-        lineHeight: '1.35',
+        gap: '16px',
+        opacity: entry.isInterim ? 0.85 : 1,
       }}
     >
-      {'Current medication confirmed: '}
-      <span style={{ color: '#133f72' }}>
-        Lisinopril 10mg
-      </span>
-      {' daily. Patient adheres'}
-      <br />
-      {'to schedule.'}
-    </p>
+      <div
+        className="flex items-start shrink-0 relative"
+        style={{ width: '56px', paddingTop: isActive ? '1px' : '0' }}
+      >
+        {isActive && (
+          <span
+            className="absolute rounded-full shrink-0"
+            style={{
+              width: '6px',
+              height: '6px',
+              backgroundColor: isAi ? 'var(--regal-navy)' : 'var(--regal-navy)',
+              left: '-5px',
+              top: '9px',
+            }}
+          />
+        )}
+        <span
+          className="font-display"
+          style={{
+            fontSize: '12px',
+            lineHeight: '16px',
+            paddingTop: '4px',
+            color: isActive ? 'var(--regal-navy)' : 'var(--text-muted)',
+          }}
+        >
+          {entry.time}
+        </span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <span
+          className="font-body font-bold"
+          style={{
+            fontSize: '11px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            color: isAi ? 'var(--regal-navy)' : 'var(--text-muted)',
+            display: 'block',
+            marginBottom: '2px',
+          }}
+        >
+          {speakerLabel}
+        </span>
+        <p
+          className="font-body"
+          style={{
+            fontSize: '14px',
+            lineHeight: '22.75px',
+            color: entry.isInterim ? 'var(--text-muted)' : 'var(--text-body-dark)',
+            fontStyle: entry.isInterim ? 'italic' : 'normal',
+            ...(isAi && entry.complete ? { fontWeight: 600, color: 'var(--regal-navy)' } : {}),
+          }}
+        >
+          {entry.text}
+        </p>
+      </div>
+    </div>
   );
 }
 
-export default function TranscriptionStream() {
+function SuggestionBlock({ suggestion }) {
+  return (
+    <div
+      className="rounded-sm"
+      style={{
+        borderLeft: '2px solid var(--regal-navy)',
+        backgroundColor: 'rgba(19, 64, 116, 0.06)',
+        padding: '12px 16px',
+        marginTop: '4px',
+      }}
+    >
+      <p className="font-body" style={{ fontSize: '13px', color: 'var(--text-heading)', marginBottom: '4px' }}>
+        {suggestion.question}
+      </p>
+      {suggestion.rationale && (
+        <p className="font-body" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+          {suggestion.rationale}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function formatDuration(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+export default function TranscriptionStream({
+  entries = [],
+  interimText = '',
+  suggestions = [],
+  basis = '',
+  complete = false,
+  isRecording = false,
+  recordingDuration = 0,
+}) {
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [entries, suggestions, complete]);
+
+  const hasLiveContent = entries.length > 0 || isRecording;
+
   return (
     <div className="flex flex-col w-full" style={{ gap: '31px' }}>
-      {/* Header row: "Hexi" title left; Export label + icons right */}
       <div
         className="flex items-center justify-between"
         style={{
@@ -64,123 +125,58 @@ export default function TranscriptionStream() {
           borderBottom: '1px solid var(--border-divider)',
         }}
       >
-        {/* Title with logo — styled like footer vitals numbers */}
-        <div className="flex items-center" style={{ gap: '10px' }}>
-          <svg width="24" height="23" viewBox="0 0 20 19" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block', flexShrink: 0 }}>
-            <path d="M9.14941 0C9.09893 0.0237414 9.04883 0.0489571 9 0.0771484L2.33984 3.92285C1.72117 4.28005 1.33999 4.93993 1.33984 5.6543V13.3457C1.33999 14.0601 1.72117 14.7199 2.33984 15.0771L9 18.9229C9.04883 18.951 9.09893 18.9763 9.14941 19H0V0H9.14941ZM20 19H10.8506C10.9011 18.9763 10.9512 18.951 11 18.9229L17.6602 15.0771C18.2788 14.7199 18.66 14.0601 18.6602 13.3457V5.6543C18.66 4.93993 18.2788 4.28005 17.6602 3.92285L11 0.0771484C10.9512 0.0489571 10.9011 0.0237414 10.8506 0H20V19Z" fill="#133F72" />
-          </svg>
-          <span
-            className="font-body font-bold truncate"
-            style={{
-              color: 'rgb(19, 63, 114)',
-              fontSize: 'clamp(18px, 2.2vw, 30px)',
-              lineHeight: '36px',
-              letterSpacing: '-0.75px',
-            }}
-          >
-            Hexi
-          </span>
-        </div>
-
-        {/* Export — label above, icons below, width aligned with icon span */}
-        <div className="flex flex-col items-center shrink-0" style={{ gap: '4px' }}>
-          <span
-            className="font-display font-bold uppercase block"
-            style={{
-              color: 'var(--text-label)',
-              fontSize: '12px',
-              lineHeight: '16px',
-              letterSpacing: '0.6px',
-              width: '64px', // 22 + 10 + 22 + 10 = spans both icons + gap
-              textAlign: 'center',
-            }}
-          >
-            Export
-          </span>
-          <div className="flex items-center" style={{ gap: '10px' }}>
-            <span
-              className="material-symbols-outlined cursor-pointer"
-              style={{
-                fontSize: '22px',
-                color: 'var(--text-label)',
-                lineHeight: 1,
-              }}
-              title="Export as PDF"
-              aria-label="Export as PDF"
-            >
-              picture_as_pdf
-            </span>
-            <span
-              className="material-symbols-outlined cursor-pointer"
-              style={{
-                fontSize: '22px',
-                color: 'var(--text-label)',
-                lineHeight: 1,
-              }}
-              title="Attach email"
-              aria-label="Attach email"
-            >
-              attach_email
-            </span>
-          </div>
-        </div>
+        <span
+          className="font-body font-bold uppercase"
+          style={{
+            color: 'var(--text-muted)',
+            fontSize: '12px',
+            letterSpacing: '1.8px',
+          }}
+        >
+          Live Chat
+        </span>
+        <span
+          className="font-display"
+          style={{
+            color: isRecording ? 'var(--regal-navy)' : 'var(--text-muted)',
+            fontSize: '12px',
+          }}
+        >
+          {isRecording ? `REC: ${formatDuration(recordingDuration)}` : complete ? 'Complete' : (hasLiveContent ? 'Paused' : '—')}
+        </span>
       </div>
 
-      {/* Chat entries */}
-      <div className="flex flex-col" style={{ gap: '23px' }}>
-        {chatEntries.map((entry, idx) => (
-          <div
-            key={idx}
-            className="flex flex-col"
-            style={{
-              gap: '6px',
-              opacity: entry.active ? 1 : entry.isPlaceholder ? 1 : entry.opacity,
-            }}
-          >
-            {/* Timestamp above — with indicator dot if active */}
-            <div className="flex items-center" style={{ gap: '8px' }}>
-              {entry.active && (
-                <span
-                  className="rounded-full shrink-0"
-                  style={{
-                    width: '6px',
-                    height: '6px',
-                    backgroundColor: 'var(--regal-navy)',
-                  }}
-                />
-              )}
-              <span
-                className="font-display"
-                style={{
-                  fontSize: '12px',
-                  lineHeight: '16px',
-                  color: entry.active ? '#133f72' : entry.isPlaceholder ? 'var(--text-muted)' : '#000000',
-                  fontFamily: entry.isPlaceholder ? "'Liberation Mono', monospace" : undefined,
-                }}
-              >
-                {entry.time}
-              </span>
-            </div>
-
-            {/* Content below timestamp */}
-            <div>
-              {entry.active ? (
-                <ActiveEntry />
-              ) : (
-                <p
-                  className="font-body"
-                  style={{
-                    fontSize: 'clamp(12px, 1.7vw, 24px)',
-                    lineHeight: '1.35',
-                    color: entry.isPlaceholder ? 'var(--text-muted)' : '#000000',
-                  }}
-                >
-                  {entry.text}
-                </p>
-              )}
-            </div>
-          </div>
+      <div ref={scrollRef} className="flex flex-col overflow-y-auto flex-1 min-h-0" style={{ gap: '23px' }}>
+        {entries.map((entry, idx) => (
+          <ChatEntry
+            key={entry.id || idx}
+            entry={entry}
+            isActive={idx === entries.length - 1 && !entry.isInterim}
+          />
         ))}
+        {isRecording && entries.length === 0 && !interimText && (
+          <p className="font-body" style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
+            Listening... AI is always recording. Doctor takes precedence.
+          </p>
+        )}
+        {isRecording && interimText && (
+          <p className="font-body italic" style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
+            {interimText}
+          </p>
+        )}
+        {suggestions.length > 0 && (
+          <div className="flex flex-col" style={{ gap: '8px', marginTop: '8px' }}>
+            <span
+              className="font-body font-bold"
+              style={{ fontSize: '12px', color: 'var(--regal-navy)', textTransform: 'uppercase' }}
+            >
+              Follow-up questions
+            </span>
+            {suggestions.map((s, i) => (
+              <SuggestionBlock key={i} suggestion={s} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

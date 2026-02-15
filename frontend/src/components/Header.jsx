@@ -31,14 +31,11 @@ export default function Header() {
         borderBottom: '1px solid var(--border-subtle)',
       }}
     >
-      {/* Logo area */}
-      <div className="flex items-center" style={{ gap: '8px' }}>
-        {/* Desktop: show logo mark */}
+      {/* Logo area — practitioner-only; patient mode kept in backend, out of scope */}
+      <div className="flex items-center" style={{ gap: '16px' }}>
         <div className="hidden lg:block">
           <LogoMark />
         </div>
-
-        {/* Brand name */}
         <span
           className="font-display font-medium capitalize"
           style={{
@@ -52,7 +49,6 @@ export default function Header() {
         </span>
       </div>
 
-      {/* Desktop navigation */}
       <nav className="hidden md:flex items-center" style={{ gap: '24px' }}>
         {['Dr. S. Vance', 'Settings', 'Logout'].map((item) => (
           <span
@@ -70,7 +66,6 @@ export default function Header() {
         ))}
       </nav>
 
-      {/* Mobile: logo mark on the right */}
       <div className="flex md:hidden">
         <LogoMark />
       </div>

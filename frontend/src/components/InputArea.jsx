@@ -1,33 +1,35 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useCallback } from 'react';
 
-/**
- * InputArea — editable textarea for transcription / clinical notes.
- *
- * Props:
- *  - transcript  (string) : live transcription text (empty for now)
- *  - isListening (bool)   : whether voice input is active
- */
-export default function InputArea({ transcript = '', isListening = false }) {
-  const [value, setValue] = useState('');
-  const textareaRef = useRef(null);
+export default function InputArea({
+  voiceError = null,
+  onGenerateSummary,
+  onSendText,
+  generatingSummary = false,
+  onAttachDocument,
+  attachedFile = null,
+  onClearAttachment,
+  documentGaps = null,
+  onCompleteDocument,
+  completingDocument = false,
+}) {
+  const [text, setText] = useState('');
 
-  // When transcript text arrives from parent, append it
-  useEffect(() => {
-    if (transcript) {
-      setValue(transcript);
-    }
-  }, [transcript]);
+  const handleSend = useCallback(() => {
+    const t = text.trim();
+    if (!t) return;
+    onSendText?.(t);
+    setText('');
+  }, [text, onSendText]);
 
-  // Auto-scroll textarea to bottom when value changes
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.scrollTop = textareaRef.current.scrollHeight;
-    }
-  }, [value]);
-
-  const placeholder = isListening
-    ? 'Listening...'
-    : 'Override transcription or append clinical notes...';
+  const handleKeyDown = useCallback(
+    (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
+    },
+    [handleSend]
+  );
 
   return (
     <div
@@ -38,116 +40,54 @@ export default function InputArea({ transcript = '', isListening = false }) {
         gap: '8px',
       }}
     >
-      {/* Textarea wrapper with + icon, file pill, and send button */}
-      <div className="relative w-full" style={{ height: '140px' }}>
+      <div className="flex items-center gap-3 flex-wrap">
+        {voiceError && (
+          <span className="font-body" style={{ fontSize: '12px', color: '#dc2626' }}>
+            {voiceError}
+          </span>
+        )}
+        {onGenerateSummary && (
+          <button
+            type="button"
+            onClick={onGenerateSummary}
+            disabled={generatingSummary}
+            className="font-body font-bold rounded-lg px-4 py-2 ml-auto"
+            style={{
+              backgroundColor: 'var(--regal-navy)',
+              color: 'white',
+              border: 'none',
+              cursor: generatingSummary ? 'wait' : 'pointer',
+              fontSize: '13px',
+              opacity: generatingSummary ? 0.7 : 1,
+            }}
+          >
+            {generatingSummary ? 'Generating…' : 'Generate summary'}
+          </button>
+        )}
+      </div>
+
+      {/* Text input: works in both modes (practitioner notes / patient symptoms) */}
+      <div className="relative w-full" style={{ height: '80px' }}>
         <textarea
-          ref={textareaRef}
-          className="w-full h-full rounded-lg font-body"
+          placeholder="Type notes or answers; AI is listening to fill gaps..."
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="w-full h-full rounded-lg font-body resize-none"
           style={{
             backgroundColor: '#ffffff',
             border: '1px solid var(--border-medium)',
             borderRadius: '8px',
-            padding: '17px 17px 50px 17px',
-            fontSize: '16px',
-            lineHeight: '22.75px',
-            color: isListening && !value
-              ? 'var(--text-placeholder)'
-              : 'var(--text-primary)',
-            resize: 'none',
-            outline: 'none',
-            fontFamily: 'inherit',
-            ...(isListening && !value
-              ? { animation: 'listeningBlink 1.5s ease-in-out infinite' }
-              : {}),
-          }}
-          placeholder={placeholder}
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-        />
-
-        {/* White background overlay for bottom controls - inside textarea bounds */}
-        <div
-          className="absolute"
-          style={{
-            bottom: '1px',
-            left: '1px',
-            right: '1px',
-            height: '44px',
-            backgroundColor: '#ffffff',
-            borderBottomLeftRadius: '7px',
-            borderBottomRightRadius: '7px',
-            pointerEvents: 'none',
-            zIndex: 0,
+            boxShadow: 'inset 0px 2px 4px 1px rgba(0, 0, 0, 0.05)',
+            padding: '17px 49px 17px 17px',
+            fontSize: '14px',
+            lineHeight: '20px',
+            color: 'var(--text-body-dark)',
           }}
         />
-
-        {/* Bottom left: + icon and file pill */}
-        <div
-          className="absolute flex items-center"
-          style={{
-            bottom: '12px',
-            left: '12px',
-            gap: '8px',
-            zIndex: 1,
-          }}
-        >
-          {/* + icon button */}
-          <button
-            className="flex items-center justify-center"
-            style={{
-              width: '20px',
-              height: '20px',
-              border: 'none',
-              background: 'none',
-              cursor: 'pointer',
-              padding: '0',
-            }}
-            type="button"
-            aria-label="Add file"
-          >
-            <span
-              className="material-symbols-outlined"
-              style={{ fontSize: '20px', color: '#133f72' }}
-            >
-              add
-            </span>
-          </button>
-
-          {/* File pill */}
-          <div
-            className="inline-flex items-center"
-            style={{
-              backgroundColor: 'rgba(19, 64, 116, 0.1)',
-              height: '20px',
-              padding: '0 4px',
-            }}
-          >
-            <span
-              className="font-body"
-              style={{
-                color: 'var(--regal-navy)',
-                fontSize: '12px',
-                lineHeight: '22.75px',
-              }}
-            >
-              MRI.png
-            </span>
-            <span
-              className="font-body font-bold cursor-pointer"
-              style={{
-                color: 'var(--regal-navy)',
-                fontSize: '12px',
-                lineHeight: '22.75px',
-                marginLeft: '8px',
-              }}
-            >
-              x
-            </span>
-          </div>
-        </div>
-
-        {/* Send button */}
         <button
+          type="button"
+          onClick={handleSend}
           className="absolute flex items-center justify-center"
           style={{
             backgroundColor: '#133f72',
@@ -162,8 +102,7 @@ export default function InputArea({ transcript = '', isListening = false }) {
             padding: '0',
             zIndex: 1,
           }}
-          type="button"
-          aria-label="Send"
+          title="Send"
         >
           <span
             className="material-symbols-outlined"
@@ -172,6 +111,29 @@ export default function InputArea({ transcript = '', isListening = false }) {
             send
           </span>
         </button>
+      </div>
+
+      {/* Attach document: find missing info per our format, then complete */}
+      <div className="flex items-center justify-between w-full flex-wrap gap-2" style={{ minHeight: '20px' }}>
+        {attachedFile ? (
+          <div className="inline-flex items-center gap-2" style={{ backgroundColor: 'rgba(19, 64, 116, 0.1)', height: '28px', padding: '0 8px', borderRadius: '4px' }}>
+            <span className="font-body" style={{ color: 'var(--regal-navy)', fontSize: '12px' }}>
+              {attachedFile.name}
+            </span>
+            <button type="button" onClick={onClearAttachment} className="font-body font-bold" style={{ color: 'var(--regal-navy)', fontSize: '12px', border: 'none', background: 'none', cursor: 'pointer' }}>×</button>
+          </div>
+        ) : null}
+        {!attachedFile && onAttachDocument && (
+          <label className="font-display font-bold cursor-pointer" style={{ color: '#133f72', fontSize: '12px', lineHeight: '15px' }}>
+            <input type="file" accept=".txt" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onAttachDocument(f); e.target.value = ''; }} />
+            + Attach document
+          </label>
+        )}
+        {documentGaps?.length > 0 && onCompleteDocument && (
+          <button type="button" onClick={onCompleteDocument} disabled={completingDocument} className="font-body font-bold rounded px-2 py-1" style={{ fontSize: '12px', backgroundColor: 'var(--regal-navy)', color: 'white', border: 'none', cursor: completingDocument ? 'wait' : 'pointer' }}>
+            {completingDocument ? 'Completing…' : 'Complete document'}
+          </button>
+        )}
       </div>
     </div>
   );
