@@ -11,11 +11,14 @@ export async function validateSnippet(text, fast = true, role = 'patient') {
   return res.json();
 }
 
-export async function chatComplete(transcript) {
+export async function chatComplete(transcript, fileContent = null) {
   const res = await fetch(`${API_BASE}/api/chat/complete`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ transcript: transcript || '' }),
+    body: JSON.stringify({ 
+      transcript: transcript || '', 
+      file_content: fileContent || null 
+    }),
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
@@ -93,3 +96,45 @@ export async function getTtsAudio(text) {
   if (res.status === 503 || !res.ok) return null;
   return res.blob();
 }
+
+/**
+ * Intelligent knowledge gap detection for nurse workflow.
+ * Returns gaps with positions for globe visualization.
+ * @param {string} transcript - Current conversation transcript
+ * @param {string[]} symptoms - Extracted symptoms if available
+ * @param {string} workflow - Workflow type: general | pain | vitals_abnormal | medication_reconciliation
+ * @returns {{ gaps: Array<{id, question, field, priority, position}>, filled_count, total_count, complete, next_question, error }}
+ */
+export async function detectKnowledgeGaps(transcript, symptoms = [], workflow = 'general') {
+  const res = await fetch(`${API_BASE}/api/knowledge-gaps`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ 
+      transcript: transcript || '', 
+      symptoms: symptoms || [],
+      workflow: workflow || 'general',
+    }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+/**
+ * Get the most efficient next question to ask based on current transcript.
+ * @param {string} transcript - Current conversation transcript
+ * @param {string} currentQuestion - Question just answered (optional)
+ * @returns {{ next_question, rationale, alternatives, is_complete }}
+ */
+export async function getNextQuestion(transcript, currentQuestion = null) {
+  const res = await fetch(`${API_BASE}/api/workflow/next-question`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ 
+      transcript: transcript || '',
+      current_question: currentQuestion,
+    }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+

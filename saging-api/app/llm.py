@@ -222,10 +222,11 @@ def _bedrock_validate(text: str, *, fast: bool = False, practitioner: bool = Fal
 
 # ---- Session complete (end of chat / stop button) ----
 
-def complete_session(transcript: str) -> dict[str, Any]:
+def complete_session(transcript: str, file_content: str = None) -> dict[str, Any]:
     """
     When user stops chat or ends session: summarize transcript and return
     suggested note + remaining gaps + complete flag. Uses fast model for speed.
+    Optional: file_content (uploaded PDF/doc text) is included as additional context.
     """
     if not settings.has_llm():
         return {
@@ -234,7 +235,7 @@ def complete_session(transcript: str) -> dict[str, Any]:
             "complete": False,
             "error": "LLM not configured.",
         }
-    raw = _session_complete_call(transcript)
+    raw = _session_complete_call(transcript, file_content=file_content)
     if raw.startswith("Claude error:") or raw.startswith("OpenAI error:") or raw.startswith("Bedrock error:"):
         return {"suggested_note": "", "remaining_gaps": [], "complete": False, "error": raw}
     return _parse_session_complete_response(raw)
@@ -267,22 +268,22 @@ def _parse_session_complete_response(raw: str) -> dict[str, Any]:
         }
 
 
-def _session_complete_call(transcript: str) -> str:
+def _session_complete_call(transcript: str, file_content: str = None) -> str:
     key_claude = (settings.claude_api_key or "").strip()
     if key_claude and not key_claude.startswith("sk-ant-dummy"):
-        return _claude_session_complete(transcript)
+        return _claude_session_complete(transcript, file_content=file_content)
     key_openai = (settings.openai_api_key or "").strip()
     if key_openai and not key_openai.startswith("sk-dummy"):
-        return _openai_session_complete(transcript)
+        return _openai_session_complete(transcript, file_content=file_content)
     if settings.llm_provider == "bedrock":
-        return _bedrock_session_complete(transcript)
+        return _bedrock_session_complete(transcript, file_content=file_content)
     return "LLM not configured."
 
 
-def _claude_session_complete(transcript: str) -> str:
+def _claude_session_complete(transcript: str, file_content: str = None) -> str:
     try:
         return _call_claude(
-            build_session_complete_prompt(transcript),
+            build_session_complete_prompt(transcript, file_content=file_content),
             system=SESSION_COMPLETE_SYSTEM_PROMPT,
             model=CLAUDE_FAST_MODEL,
             max_tokens=400,
@@ -291,7 +292,7 @@ def _claude_session_complete(transcript: str) -> str:
         return f"Claude error: {e}"
 
 
-def _openai_session_complete(transcript: str) -> str:
+def _openai_session_complete(transcript: str, file_content: str = None) -> str:
     try:
         from openai import OpenAI
         client = OpenAI(api_key=settings.openai_api_key)
@@ -299,7 +300,7 @@ def _openai_session_complete(transcript: str) -> str:
             model=OPENAI_FAST_MODEL,
             messages=[
                 {"role": "system", "content": SESSION_COMPLETE_SYSTEM_PROMPT},
-                {"role": "user", "content": build_session_complete_prompt(transcript)},
+                {"role": "user", "content": build_session_complete_prompt(transcript, file_content=file_content)},
             ],
             max_tokens=400,
         )
@@ -308,7 +309,7 @@ def _openai_session_complete(transcript: str) -> str:
         return f"OpenAI error: {e}"
 
 
-def _bedrock_session_complete(transcript: str) -> str:
+def _bedrock_session_complete(transcript: str, file_content: str = None) -> str:
     try:
         import boto3
         import json as _json
@@ -317,7 +318,7 @@ def _bedrock_session_complete(transcript: str) -> str:
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": 400,
             "system": SESSION_COMPLETE_SYSTEM_PROMPT,
-            "messages": [{"role": "user", "content": build_session_complete_prompt(transcript)}],
+            "messages": [{"role": "user", "content": build_session_complete_prompt(transcript, file_content=file_content)}],
         }
         resp = client.invoke_model(
             modelId="anthropic.claude-3-haiku-20240307-v1:0",

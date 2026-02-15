@@ -154,13 +154,18 @@ const HexiCore = forwardRef(function HexiCore(
     contextTargetRef.current = Math.min(1, contextTargetRef.current + amount);
   }, []);
 
+  /** setContext(level) — directly set the darkness level (0-1) */
+  const setContext = useCallback((level) => {
+    contextTargetRef.current = Math.max(0, Math.min(1, level));
+  }, []);
+
   /** resetContext() — reset darkness back to 0 */
   const resetContext = useCallback(() => {
     contextTargetRef.current = 0;
   }, []);
 
-  // Expose addContext/resetContext to parent via ref
-  useImperativeHandle(ref, () => ({ addContext, resetContext }), [addContext, resetContext]);
+  // Expose addContext/setContext/resetContext to parent via ref
+  useImperativeHandle(ref, () => ({ addContext, setContext, resetContext }), [addContext, setContext, resetContext]);
 
   // Fade-in state
   const [hasMounted, setHasMounted] = useState(false);

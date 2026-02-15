@@ -130,6 +130,8 @@ export default function TranscriptionStream({
 
         {entries.map((entry, index) => {
           const showTimestamp = shouldShowTimestamp(entry, index);
+          const isQuestion = entry.isQuestion;
+          const isLiterature = entry.isLiterature;
           
           return (
             <div
@@ -148,7 +150,7 @@ export default function TranscriptionStream({
                       style={{
                         width: '6px',
                         height: '6px',
-                        backgroundColor: 'var(--regal-navy)',
+                        backgroundColor: isQuestion ? '#F59E0B' : isLiterature ? '#22C55E' : 'var(--regal-navy)',
                       }}
                     />
                   )}
@@ -161,25 +163,90 @@ export default function TranscriptionStream({
                     }}
                   >
                     {entry.time}
-                    {entry.speaker === 'ai' && ' • Hexi'}
+                    {entry.speaker === 'ai' && (isQuestion ? ' • Question' : isLiterature ? ' • Research' : ' • Hexi')}
                   </span>
                 </div>
               )}
 
-              {/* Content - left aligned consistently */}
-              <p
-                className="font-body leading-relaxed"
-                style={{
-                  fontSize: 'clamp(12px, 1.7vw, 24px)',
-                  lineHeight: '1.35',
-                  color: entry.speaker === 'ai' ? '#133f72' : '#000000',
-                  whiteSpace: 'pre-wrap',
-                  margin: '0',
-                  padding: '0',
-                }}
-              >
-                {entry.text.trim()}
-              </p>
+              {/* Question Card styling */}
+              {isQuestion ? (
+                <div
+                  className="rounded-lg p-3"
+                  style={{
+                    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+                    border: '1px solid rgba(245, 158, 11, 0.2)',
+                  }}
+                >
+                  <div className="flex items-start gap-3">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="#F59E0B" className="shrink-0 mt-0.5">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/>
+                    </svg>
+                    <p
+                      className="font-body leading-relaxed"
+                      style={{
+                        fontSize: 'clamp(13px, 1.6vw, 20px)',
+                        lineHeight: '1.4',
+                        color: '#92400E',
+                        fontWeight: 500,
+                      }}
+                    >
+                      {entry.text.trim()}
+                    </p>
+                  </div>
+                </div>
+              ) : isLiterature ? (
+                /* Literature Card styling */
+                <div
+                  className="rounded-lg p-3"
+                  style={{
+                    backgroundColor: 'rgba(34, 197, 94, 0.06)',
+                    border: '1px solid rgba(34, 197, 94, 0.2)',
+                  }}
+                >
+                  <div className="flex items-start gap-3">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="#22C55E" className="shrink-0 mt-0.5">
+                      <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                    </svg>
+                    <div
+                      className="font-body leading-relaxed"
+                      style={{
+                        fontSize: 'clamp(12px, 1.5vw, 18px)',
+                        lineHeight: '1.5',
+                        color: '#15803D',
+                      }}
+                    >
+                      {/* Parse markdown-style content */}
+                      {entry.text.split('\n').map((line, i) => {
+                        if (line.startsWith('📚 **')) {
+                          const title = line.replace('📚 **Research Finding**: ', '').replace('**', '');
+                          return <h4 key={i} className="font-semibold mb-2">{title}</h4>;
+                        } else if (line.startsWith('• ')) {
+                          return <p key={i} className="ml-2">{line}</p>;
+                        } else if (line.startsWith('_Source:')) {
+                          return <p key={i} className="text-xs mt-2 opacity-70 italic">{line.replace(/_/g, '')}</p>;
+                        } else {
+                          return <p key={i}>{line}</p>;
+                        }
+                      })}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Standard message */
+                <p
+                  className="font-body leading-relaxed"
+                  style={{
+                    fontSize: 'clamp(12px, 1.7vw, 24px)',
+                    lineHeight: '1.35',
+                    color: entry.speaker === 'ai' ? '#133f72' : '#000000',
+                    whiteSpace: 'pre-wrap',
+                    margin: '0',
+                    padding: '0',
+                  }}
+                >
+                  {entry.text.trim()}
+                </p>
+              )}
             </div>
           );
         })}

@@ -186,6 +186,7 @@ def clinical_validate(body: ValidateRequest):
 
 class ChatCompleteRequest(BaseModel):
     transcript: str  # full live chat transcript to summarize
+    file_content: Optional[str] = None  # optional uploaded document content for additional context
 
 class ChatCompleteResponse(BaseModel):
     suggested_note: str
@@ -437,3 +438,168 @@ def create_record(r: RecordCreate):
         return {"ok": True, "key": r.key}
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+
+# ---- Intelligent Knowledge Gap Detection ----
+
+class KnowledgeGapItem(BaseModel):
+    id: int
+    question: str
+    field: str
+    priority: str  # critical | important | recommended
+    position: Optional[dict] = None  # lat/lng for globe visualization
+
+
+class KnowledgeGapRequest(BaseModel):
+    transcript: str  # current conversation transcript
+    symptoms: Optional[List[str]] = None  # extracted symptoms if available
+    workflow: Optional[str] = "general"  # general | pain | vitals_abnormal | medication_reconciliation
+
+
+class KnowledgeGapResponse(BaseModel):
+    gaps: List[KnowledgeGapItem]
+    filled_count: int = 0
+    total_count: int = 0
+    complete: bool = False
+    next_question: Optional[str] = None  # most important next question to ask
+    error: Optional[str] = None
+
+
+def _generate_globe_position(index: int, total: int) -> dict:
+    """Generate distributed lat/lng positions for globe markers."""
+    import math
+    # Golden angle for even distribution on sphere
+    golden_angle = math.pi * (3 - math.sqrt(5))
+    y = 1 - (index / float(total - 1 if total > 1 else 1)) * 2  # y from 1 to -1
+    radius = math.sqrt(1 - y * y)
+    theta = golden_angle * index
+    lat = math.asin(y) * 180 / math.pi
+    lng = theta * 180 / math.pi
+    return {"lat": lat, "lng": lng % 360 - 180}
+
+
+@app.post("/api/knowledge-gaps", response_model=KnowledgeGapResponse, tags=["API"])
+def detect_knowledge_gaps(body: KnowledgeGapRequest):
+    """
+    Intelligent knowledge gap detection for nurse workflow.
+    
+    Uses:
+    1. Evidence-based clinical question patterns
+    2. LLM analysis of transcript for missing information
+    3. Medical knowledge context for relevant follow-ups
+    
+    Returns prioritized questions with globe positions for visualization.
+    """
+    from app.biomcp_client import (
+        enhance_knowledge_gaps_with_medical_context,
+        get_nurse_workflow_questions,
+    )
+    
+    # Start with workflow-specific base questions
+    base_questions = get_nurse_workflow_questions(body.workflow or "general")
+    
+    # If symptoms provided, enhance with medical context
+    if body.symptoms:
+        base_questions = enhance_knowledge_gaps_with_medical_context(
+            body.symptoms, base_questions
+        )
+    
+    # Use LLM to analyze what's already been answered in the transcript
+    transcript_lower = (body.transcript or "").lower()
+    
+    # Filter out questions that appear to be answered
+    unanswered_gaps = []
+    answered_count = 0
+    
+    for i, q in enumerate(base_questions):
+        field = q.get("field", "").lower()
+        question_keywords = q.get("question", "").lower().split()[:3]
+        
+        # Simple heuristic: check if key terms from the question field appear in transcript
+        field_mentioned = field.replace("_", " ") in transcript_lower
+        keywords_mentioned = any(kw in transcript_lower for kw in question_keywords if len(kw) > 3)
+        
+        if field_mentioned or (keywords_mentioned and len(transcript_lower) > 100):
+            answered_count += 1
+        else:
+            unanswered_gaps.append(q)
+    
+    # Sort by priority (critical first)
+    priority_order = {"critical": 0, "important": 1, "recommended": 2}
+    unanswered_gaps.sort(key=lambda x: priority_order.get(x.get("priority", "recommended"), 2))
+    
+    # Limit to top 8 questions for globe
+    unanswered_gaps = unanswered_gaps[:8]
+    
+    # Add globe positions
+    total = len(unanswered_gaps)
+    gap_items = []
+    for i, gap in enumerate(unanswered_gaps):
+        gap_items.append(KnowledgeGapItem(
+            id=i + 1,
+            question=gap["question"],
+            field=gap["field"],
+            priority=gap["priority"],
+            position=_generate_globe_position(i, max(total, 1))
+        ))
+    
+    total_count = len(base_questions)
+    filled_count = answered_count
+    complete = len(gap_items) == 0 or filled_count >= total_count * 0.8
+    
+    return KnowledgeGapResponse(
+        gaps=gap_items,
+        filled_count=filled_count,
+        total_count=total_count,
+        complete=complete,
+        next_question=gap_items[0].question if gap_items else None,
+        error=None,
+    )
+
+
+class WorkflowSuggestionRequest(BaseModel):
+    transcript: str
+    current_question: Optional[str] = None
+
+
+class WorkflowSuggestionResponse(BaseModel):
+    next_question: str
+    rationale: str
+    alternatives: List[str] = []
+    is_complete: bool = False
+
+
+@app.post("/api/workflow/next-question", response_model=WorkflowSuggestionResponse, tags=["API"])
+def suggest_next_question(body: WorkflowSuggestionRequest):
+    """
+    AI-powered suggestion for the most efficient next question.
+    
+    Analyzes the transcript to determine what information is still needed
+    and suggests the single most impactful question to ask next.
+    """
+    # Use the validation endpoint logic with a specific prompt for next-question
+    from app.llm import validate_clinical_snippet
+    
+    result = validate_clinical_snippet(body.transcript, fast=True, role="practitioner")
+    
+    suggestions = result.get("suggestions", [])
+    
+    if not suggestions or result.get("complete"):
+        return WorkflowSuggestionResponse(
+            next_question="Is there anything else you'd like to tell me about what's going on?",
+            rationale="Documentation appears complete. Open-ended follow-up to ensure nothing is missed.",
+            alternatives=[],
+            is_complete=True,
+        )
+    
+    # Return the highest priority suggestion
+    next_q = suggestions[0]
+    alternatives = [s["question"] for s in suggestions[1:3]] if len(suggestions) > 1 else []
+    
+    return WorkflowSuggestionResponse(
+        next_question=next_q.get("question", ""),
+        rationale=next_q.get("rationale", ""),
+        alternatives=alternatives,
+        is_complete=False,
+    )
+

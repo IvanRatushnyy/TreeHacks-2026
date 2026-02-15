@@ -61,8 +61,11 @@ SESSION_COMPLETE_SYSTEM_PROMPT = """You are a clinical documentation assistant. 
 - complete: true if no critical gaps; false if key HPI/context still missing.
 - recommendations: always provide; e.g. "Consider OTC pain relief for mild symptoms. Consult a doctor if fever persists or symptoms worsen." or "Recommend follow-up with PCP for ongoing management." """
 
-def build_session_complete_prompt(transcript: str) -> str:
-    return f"""Transcript:\n{transcript}\n\nOutput JSON only: suggested_note, remaining_gaps (array), complete (boolean), recommendations (string with actionable advice)."""
+def build_session_complete_prompt(transcript: str, file_content: str = None) -> str:
+    context_section = ""
+    if file_content:
+        context_section = f"\n\nAdditional Context (uploaded document):\n{file_content[:4000]}\n"
+    return f"""Transcript:\n{transcript}{context_section}\n\nOutput JSON only: suggested_note, remaining_gaps (array), complete (boolean), recommendations (string with actionable advice). Use the additional context from the uploaded document to inform your analysis and suggestions."""
 
 # ---- Document: gaps (missing info per our format) and complete ----
 DOCUMENT_ANALYZE_SYSTEM_PROMPT = """You are a clinical documentation assistant. Given a document (e.g. note or form), compare it to our documentation framework and identify MISSING information. Our format requires: HPI elements (onset, duration, character, location, aggravating/relieving, associated symptoms, temporal pattern), context/severity, actionability, unambiguous language. Output valid JSON only: {"gaps":[{"question":"...","field":"...","priority":"critical|important|recommended"}],"summary":"One sentence on what is missing."}. If the document is complete per the framework, return {"gaps":[],"summary":"Document meets framework."}"""
